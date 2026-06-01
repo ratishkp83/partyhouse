@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PartyHouse — Find Your Perfect Party Venue</title>
+<meta name="description" content="Discover and book unique party venues for couples, families, and groups. Birthdays, anniversaries, celebrations — find your perfect PartyHouse.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="logo" onclick="goPage('home')" data-tip="Go to PartyHouse homepage">
+      <span class="logo-icon">🎉</span>
+      Party<span class="logo-accent">House</span>
+    </div>
+
+    <div class="search-bar" id="navSearchBar">
+      <div class="search-seg">
+        <label>Where</label>
+        <input type="text" placeholder="City or venue type..." id="navWhere">
+      </div>
+      <div class="search-seg">
+        <label>Party Date</label>
+        <input type="date" id="navDate">
+      </div>
+      <div class="search-seg" style="flex:.8">
+        <label>Party Type</label>
+        <select id="navPartyType" style="border:none;outline:none;font-size:13px;color:var(--muted);background:transparent;width:100%;cursor:pointer">
+          <option value="">Any occasion</option>
+          <option>Couple Celebration</option>
+          <option>Family Party</option>
+          <option>Group Event</option>
+          <option>Birthday Bash</option>
+          <option>Anniversary</option>
+          <option>Corporate Party</option>
+        </select>
+      </div>
+      <div class="search-seg" style="flex:.7">
+        <label>Guests</label>
+        <input type="text" placeholder="How many?" id="navGuests">
+      </div>
+      <button class="search-btn" onclick="goPage('search')" data-tip="Search party venues">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Find Venues
+      </button>
+    </div>
+
+    <div class="nav-right">
+      <div class="nav-link" onclick="goPage('host')" data-tip="List your venue for parties">List Your Venue</div>
+      <div class="nav-icon" data-tip="Change language or currency">🌐</div>
+      <div class="user-menu" id="userMenuWrap">
+        <button class="user-btn" onclick="toggleMenu()" data-tip="Account, bookings, and messages">
+          <span class="menu-icon">☰</span>
+          <div class="user-avatar" id="userAv">?</div>
+        </button>
+        <div class="dropdown" id="userDropdown">
+          <div class="dd-item bold" onclick="goPage('trips')">🎊 My Bookings</div>
+          <div class="dd-item" onclick="goPage('wishlist')">❤️ Saved Venues</div>
+          <div class="dd-item" onclick="">💬 Messages</div>
+          <div class="dd-div"></div>
+          <div class="dd-item bold" onclick="goPage('dashboard')">🏠 Host Dashboard</div>
+          <div class="dd-item" onclick="goPage('new-listing')">➕ Add New Venue</div>
+          <div class="dd-div"></div>
+          <div class="dd-item" onclick="">⚙️ Account Settings</div>
+          <div class="dd-item" onclick="">❓ Help Center</div>
+          <div class="dd-div"></div>
+          <div class="dd-item" id="authToggleItem" onclick="handleAuth()">🔐 Log In / Sign Up</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- CATEGORY BAR -->
+<div class="cat-bar" id="catBar">
+  <div class="cat-inner">
+    <div class="cat-item active" onclick="setCat(this,'💑','Couple')" data-tip="Intimate venues for couples"><div class="cat-icon">💑</div>Couple</div>
+    <div class="cat-item" onclick="setCat(this,'👨‍👩‍👧‍👦','Family')" data-tip="Family-friendly party venues"><div class="cat-icon">👨‍👩‍👧‍👦</div>Family</div>
+    <div class="cat-item" onclick="setCat(this,'🎉','Group Party')" data-tip="Large group event spaces"><div class="cat-icon">🎉</div>Group Party</div>
+    <div class="cat-item" onclick="setCat(this,'🎂','Birthday')" data-tip="Birthday party venues"><div class="cat-icon">🎂</div>Birthday</div>
+    <div class="cat-item" onclick="setCat(this,'💍','Anniversary')" data-tip="Romantic anniversary venues"><div class="cat-icon">💍</div>Anniversary</div>
+    <div class="cat-item" onclick="setCat(this,'🏊','Pool Party')" data-tip="Venues with private pool"><div class="cat-icon">🏊</div>Pool Party</div>
+    <div class="cat-item" onclick="setCat(this,'🌃','Rooftop')" data-tip="Rooftop party venues"><div class="cat-icon">🌃</div>Rooftop</div>
+    <div class="cat-item" onclick="setCat(this,'🌳','Garden Party')" data-tip="Outdoor garden event spaces"><div class="cat-icon">🌳</div>Garden</div>
+    <div class="cat-item" onclick="setCat(this,'🎮','Game Night')" data-tip="Venues perfect for game nights"><div class="cat-icon">🎮</div>Game Night</div>
+    <div class="cat-item" onclick="setCat(this,'🍾','Club Style')" data-tip="Club-style private party venues"><div class="cat-icon">🍾</div>Club Style</div>
+    <div class="cat-item" onclick="setCat(this,'🏡','Villa')" data-tip="Luxury villas for private parties"><div class="cat-icon">🏡</div>Villa</div>
+    <div class="cat-item" onclick="setCat(this,'🎪','Corporate')" data-tip="Corporate event venues"><div class="cat-icon">🎪</div>Corporate</div>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div id="pages">
+
+  <!-- ===== HOME ===== -->
+  <div class="page active" id="page-home">
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <div class="confetti" id="confetti"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow">🎉 Book unique party venues</div>
+        <h1>Every celebration<br>deserves a <em>perfect stage</em></h1>
+        <p>Find private venues for couples, families & groups — birthdays, anniversaries, and everything worth celebrating</p>
+        <div class="hero-search">
+          <div class="hs-seg">
+            <label>Where?</label>
+            <input type="text" placeholder="Mumbai, Goa, Bangalore...">
+          </div>
+          <div class="hs-seg">
+            <label>Party Date</label>
+            <input type="date">
+          </div>
+          <div class="hs-seg" style="flex:.9">
+            <label>Occasion</label>
+            <select style="border:none;outline:none;font-size:13px;color:var(--muted);background:transparent;width:100%;cursor:pointer">
+              <option>Any occasion</option>
+              <option>Couple Celebration</option>
+              <option>Family Party</option>
+              <option>Group Event</option>
+              <option>Birthday</option>
+              <option>Anniversary</option>
+            </select>
+          </div>
+          <div class="hs-seg" style="flex:.7">
+            <label>Guests</label>
+            <input type="text" placeholder="10 people">
+          </div>
+          <button class="hero-search-btn" onclick="goPage('search')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Find Venues
+          </button>
+        </div>
+        <div class="hero-tags">
+          <span onclick="goPage('search')" data-tip="Find venues for couples">💑 Couple</span>
+          <span onclick="goPage('search')" data-tip="Find family venues">👨‍👩‍👧‍👦 Family</span>
+          <span onclick="goPage('search')" data-tip="Find group venues">🎉 Group</span>
+          <span onclick="goPage('search')" data-tip="Find birthday venues">🎂 Birthday</span>
+          <span onclick="goPage('search')" data-tip="Find anniversary venues">💍 Anniversary</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-body">
+      <div class="container">
+        <!-- Featured Venues -->
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">🔥 Trending venues</div>
+            <div class="see-all" onclick="goPage('search')">View all →</div>
+          </div>
+          <div class="prop-grid" id="featuredGrid"></div>
+        </div>
+
+        <!-- Party Types CTA -->
+        <div class="party-types-section">
+          <div class="section-title" style="margin-bottom:24px">Plan by party type</div>
+          <div class="party-type-grid">
+            <div class="pt-card" onclick="goPage('search')" data-tip="Browse couple venues">
+              <div class="pt-emoji">💑</div>
+              <h3>Couple</h3>
+              <p>Intimate spaces for two — anniversaries, proposals & date nights</p>
+              <div class="pt-count">124 venues</div>
+            </div>
+            <div class="pt-card" onclick="goPage('search')" data-tip="Browse family venues">
+              <div class="pt-emoji">👨‍👩‍👧‍👦</div>
+              <h3>Family</h3>
+              <p>Safe, spacious venues perfect for family birthdays & reunions</p>
+              <div class="pt-count">218 venues</div>
+            </div>
+            <div class="pt-card" onclick="goPage('search')" data-tip="Browse group party venues">
+              <div class="pt-emoji">🎉</div>
+              <h3>Group</h3>
+              <p>Large-capacity spaces for epic group celebrations & events</p>
+              <div class="pt-count">189 venues</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- How it works -->
+        <div class="section">
+          <div class="section-title" style="margin-bottom:32px">How PartyHouse works</div>
+          <div class="how-grid">
+            <div class="how-item">
+              <div class="how-num">1</div>
+              <h3>Find your venue</h3>
+              <p>Search by city, party type, or occasion. Filter by capacity, amenities, and budget.</p>
+            </div>
+            <div class="how-item">
+              <div class="how-num">2</div>
+              <h3>Book instantly</h3>
+              <p>Reserve with a few clicks. Secure payment, flexible cancellation, and host support.</p>
+            </div>
+            <div class="how-item">
+              <div class="how-num">3</div>
+              <h3>Party your way</h3>
+              <p>Arrive to a fully set-up venue. Some hosts offer catering, décor & DJ packages too.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Host Banner -->
+        <div class="host-banner">
+          <div>
+            <div class="host-banner-tag">For venue owners</div>
+            <h2>Turn your space into a party hotspot</h2>
+            <p>List your home, villa, terrace or hall and earn every time someone celebrates there. You control pricing, availability, and house rules.</p>
+          </div>
+          <button class="host-cta" onclick="goPage('new-listing')" data-tip="Start listing your venue today">List Your Venue →</button>
+        </div>
+
+        <!-- Reviews -->
+        <div class="section">
+          <div class="section-title" style="margin-bottom:24px">What partygoers say</div>
+          <div class="review-row">
+            <div class="review-card">
+              <div class="stars">★★★★★</div>
+              <div class="review-text">"Booked the rooftop for our anniversary. The fairy lights, the view, the setup — Rahul thought about everything. Magical night!"</div>
+              <div class="reviewer"><div class="reviewer-av" style="background:#e91e63">SK</div><div><div class="reviewer-name">Sneha K.</div><div class="reviewer-date">Mumbai · April 2026</div></div></div>
+            </div>
+            <div class="review-card">
+              <div class="stars">★★★★★</div>
+              <div class="review-text">"Pool villa for my son's 10th birthday. 25 kids, zero stress. The host had a DJ, catering, and décor all arranged. Absolute lifesaver!"</div>
+              <div class="reviewer"><div class="reviewer-av" style="background:#2196f3">RM</div><div><div class="reviewer-name">Rakesh M.</div><div class="reviewer-date">Bangalore · May 2026</div></div></div>
+            </div>
+            <div class="review-card">
+              <div class="stars">★★★★★</div>
+              <div class="review-text">"Office farewell party for 40 people. The garden venue was stunning and the host was incredibly helpful with vendor coordination."</div>
+              <div class="reviewer"><div class="reviewer-av" style="background:#4caf50">PT</div><div><div class="reviewer-name">Priya T.</div><div class="reviewer-date">Goa · March 2026</div></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-logo">🎉 PartyHouse</div>
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>Support</h4>
+            <a>Help Center</a><a>Safety Info</a><a>Cancellation Policy</a><a>Report an Issue</a>
+          </div>
+          <div class="footer-col">
+            <h4>Party Types</h4>
+            <a>Couple Venues</a><a>Family Parties</a><a>Group Events</a><a>Birthday Venues</a>
+          </div>
+          <div class="footer-col">
+            <h4>Hosting</h4>
+            <a>List Your Venue</a><a>Host Resources</a><a>Pricing Guide</a><a>Host Protection</a>
+          </div>
+          <div class="footer-col">
+            <h4>PartyHouse</h4>
+            <a>About Us</a><a>Careers</a><a>Press</a><a>Gift Cards</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div>© 2026 PartyHouse, Inc. · Privacy · Terms · Sitemap</div>
+          <div class="footer-social">
+            <div class="social-icon" data-tip="Follow on Instagram">📷</div>
+            <div class="social-icon" data-tip="Follow on Facebook">f</div>
+            <div class="social-icon" data-tip="Follow on Twitter">𝕏</div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ===== SEARCH RESULTS ===== -->
+  <div class="page" id="page-search">
+    <div class="container">
+      <div class="results-layout">
+        <div class="filter-panel">
+          <div class="filter-title">🎛 Filters</div>
+
+          <div class="filter-group">
+            <label>Party Type</label>
+            <div class="filter-checks">
+              <label class="filter-check"><input type="checkbox" checked> Couple (2–4 guests)</label>
+              <label class="filter-check"><input type="checkbox" checked> Family Party</label>
+              <label class="filter-check"><input type="checkbox" checked> Group Event</label>
+              <label class="filter-check"><input type="checkbox"> Birthday Bash</label>
+              <label class="filter-check"><input type="checkbox"> Anniversary</label>
+              <label class="filter-check"><input type="checkbox"> Corporate</label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Price per booking</label>
+            <input type="range" class="filter-slider" min="1000" max="200000" value="50000" id="priceSlider" oninput="updatePrice(this.value)">
+            <div class="filter-price-range"><span>₹1,000</span><span id="priceVal">Up to ₹50,000</span></div>
+          </div>
+
+          <div class="filter-group">
+            <label>Guest Capacity</label>
+            <div class="filter-checks">
+              <label class="filter-check"><input type="checkbox" checked> 2–10 guests</label>
+              <label class="filter-check"><input type="checkbox" checked> 11–30 guests</label>
+              <label class="filter-check"><input type="checkbox"> 31–100 guests</label>
+              <label class="filter-check"><input type="checkbox"> 100+ guests</label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Venue Features</label>
+            <div class="filter-checks">
+              <label class="filter-check"><input type="checkbox" checked> Private space</label>
+              <label class="filter-check"><input type="checkbox"> Swimming pool</label>
+              <label class="filter-check"><input type="checkbox"> DJ/Sound system</label>
+              <label class="filter-check"><input type="checkbox"> Catering available</label>
+              <label class="filter-check"><input type="checkbox"> Décor included</label>
+              <label class="filter-check"><input type="checkbox"> Rooftop/Terrace</label>
+              <label class="filter-check"><input type="checkbox"> Outdoor garden</label>
+              <label class="filter-check"><input type="checkbox"> Alcohol permitted</label>
+              <label class="filter-check"><input type="checkbox"> Kids-friendly</label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <div class="filter-toggle">
+              <div style="font-size:13px;font-weight:500" data-tip="Book instantly without host approval">⚡ Instant Book</div>
+              <div class="toggle-sw" id="tog-instant" onclick="toggleSw('tog-instant')"></div>
+            </div>
+            <div class="filter-toggle" style="margin-top:12px">
+              <div style="font-size:13px;font-weight:500" data-tip="Only show top-rated hosts">⭐ Top Hosts only</div>
+              <div class="toggle-sw on" id="tog-top" onclick="toggleSw('tog-top')"></div>
+            </div>
+          </div>
+
+          <button class="filter-apply">Show Results</button>
+        </div>
+
+        <div>
+          <div class="results-header">
+            <div class="results-count" id="resultsCount">64 party venues found</div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <select class="sort-select" data-tip="Sort results">
+                <option>Best Match</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Top Rated</option>
+                <option>Most Popular</option>
+              </select>
+            </div>
+          </div>
+          <div class="prop-grid" id="searchGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LISTING DETAIL ===== -->
+  <div class="page" id="page-listing">
+    <div class="container" style="padding-top:32px;padding-bottom:0">
+      <div class="listing-gallery">
+        <div class="gallery-main">🎉<button class="gallery-btn" data-tip="View all photos">📷 All photos</button></div>
+        <div class="gallery-sub">🌃</div>
+        <div class="gallery-sub">🎊</div>
+      </div>
+
+      <div class="listing-layout">
+        <div>
+          <div class="listing-badge-row">
+            <span class="listing-badge couple" data-tip="Ideal for couple celebrations">💑 Couple</span>
+            <span class="listing-badge family" data-tip="Family-friendly venue">👨‍👩‍👧‍👦 Family</span>
+            <span class="listing-badge group" data-tip="Great for group parties">🎉 Group</span>
+          </div>
+          <div class="listing-title" id="listingTitle">The Skyline Rooftop Party Lounge</div>
+          <div class="listing-sub" id="listingSub">📍 Bandra, Mumbai · Hosted by Rahul V.</div>
+
+          <div class="listing-stats">
+            <div class="listing-stat">⭐ <strong>4.97</strong> <span>(86 reviews)</span></div>
+            <div class="listing-stat" style="color:var(--muted)">·</div>
+            <div class="listing-stat">👥 <strong>Up to 50</strong> <span>guests</span></div>
+            <div class="listing-stat" style="color:var(--muted)">·</div>
+            <div class="listing-stat">🎊 <strong>All occasions</strong></div>
+            <div class="listing-stat" style="color:var(--muted)">·</div>
+            <div class="listing-stat">⏰ <strong>8 hrs</strong> <span>min booking</span></div>
+          </div>
+
+          <div class="host-row">
+            <div class="host-avatar">R</div>
+            <div>
+              <div style="font-weight:600;margin-bottom:4px">Hosted by <strong>Rahul Verma</strong> <span class="superhost-badge" data-tip="Top-rated host — consistently praised by partygoers">⭐ Top Host</span></div>
+              <div style="font-size:12px;color:var(--muted)">Member since 2022 · 97% response rate · Responds within 30 min</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="listing-highlights">
+            <div class="lh-item" data-tip="Complete privacy for your event"><span>🔒</span><div><strong>Fully private</strong><p>Exclusive use of entire venue</p></div></div>
+            <div class="lh-item" data-tip="Professional sound for your party"><span>🎵</span><div><strong>DJ & Sound system</strong><p>Premium JBL setup included</p></div></div>
+            <div class="lh-item" data-tip="Flexible booking policy"><span>🔄</span><div><strong>Free cancellation</strong><p>Up to 48 hours before</p></div></div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">About this venue</h3>
+          <div class="listing-desc">
+            Welcome to Mumbai's most sought-after private party rooftop! Perched on the 18th floor with panoramic views of the Bandra-Worli Sea Link, this venue transforms any occasion into an unforgettable experience.<br><br>
+            Whether it's an intimate anniversary dinner for two, a wild birthday bash for 50, or a family reunion — The Skyline delivers. The space includes a fully-equipped bar, a dance floor, LED mood lighting, a sound system, and a dedicated host who ensures everything runs perfectly.
+          </div>
+
+          <div class="section-divider"></div>
+
+          <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">What's included</h3>
+          <div class="amenity-grid">
+            <div class="amenity"><div class="amenity-icon">🎵</div>DJ & Sound System</div>
+            <div class="amenity"><div class="amenity-icon">💡</div>LED Mood Lighting</div>
+            <div class="amenity"><div class="amenity-icon">🍾</div>Bar Setup (BYOB)</div>
+            <div class="amenity"><div class="amenity-icon">🍽</div>Catering Available</div>
+            <div class="amenity"><div class="amenity-icon">🎊</div>Basic Décor</div>
+            <div class="amenity"><div class="amenity-icon">📷</div>Photo Booth Area</div>
+            <div class="amenity"><div class="amenity-icon">🅿</div>Valet Parking</div>
+            <div class="amenity"><div class="amenity-icon">🔒</div>Private Entrance</div>
+            <div class="amenity"><div class="amenity-icon">📶</div>High-Speed WiFi</div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">Guest reviews</h3>
+          <div class="review-grid">
+            <div class="review-card">
+              <div class="reviewer"><div class="reviewer-av">AK</div><div><div class="reviewer-name">Aditya K.</div><div class="reviewer-date">April 2026 · Birthday</div></div></div>
+              <div class="stars">★★★★★</div>
+              <div class="review-text" style="margin-top:8px">Threw my 30th here with 40 friends. The sound system is insane, the view is jaw-dropping. Rahul had everything ready before we arrived.</div>
+            </div>
+            <div class="review-card">
+              <div class="reviewer"><div class="reviewer-av" style="background:#9c27b0">SM</div><div><div class="reviewer-name">Smita M.</div><div class="reviewer-date">March 2026 · Anniversary</div></div></div>
+              <div class="stars">★★★★★</div>
+              <div class="review-text" style="margin-top:8px">Anniversary surprise for my husband. Rahul helped me arrange flowers, candles and a cake. He cried. I cried. 10/10.</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+          <div style="background:#fff8f0;border:1.5px solid #ffe0b2;border-radius:var(--r-lg);padding:20px;margin-bottom:16px">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">📋 Venue Rules</h4>
+            <div style="font-size:13px;color:var(--muted);line-height:1.9">
+              Available: 10:00 AM – 4:00 AM &nbsp;·&nbsp; Minimum 4-hour booking<br>
+              Max 50 guests &nbsp;·&nbsp; Outside food/catering welcome &nbsp;·&nbsp; BYOB allowed &nbsp;·&nbsp; No fireworks indoors
+            </div>
+          </div>
+          <div style="background:#f0fff4;border:1.5px solid #b2dfdb;border-radius:var(--r-lg);padding:20px">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">🔄 Cancellation Policy</h4>
+            <div style="font-size:13px;color:var(--muted);line-height:1.7">Free cancellation within 48 hours of booking. Cancel before your event date for a 50% refund on the booking fee.</div>
+          </div>
+        </div>
+
+        <!-- Booking Widget -->
+        <div>
+          <div class="book-widget">
+            <div class="bw-rating"><div class="stars">★★★★★</div><strong>4.97</strong><span style="font-size:13px;color:var(--muted)">(86 reviews)</span></div>
+            <div class="bw-price">₹<span id="listingPrice">12,000</span> <span>/ hour</span></div>
+            <div class="bw-row-label">Minimum 4 hours · Up to 50 guests</div>
+
+            <div class="bw-dates">
+              <div class="bw-date">
+                <label>Party Date</label>
+                <input type="date" id="bwDate">
+              </div>
+              <div class="bw-date">
+                <label>Duration</label>
+                <select id="bwHours" onchange="calcPrice()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                  <option value="4">4 hours</option>
+                  <option value="6" selected>6 hours</option>
+                  <option value="8">8 hours</option>
+                  <option value="12">12 hours</option>
+                  <option value="18">Full day (18h)</option>
+                </select>
+              </div>
+            </div>
+            <div class="bw-dates" style="margin-top:8px">
+              <div class="bw-date" style="flex:1;border-right:none">
+                <label>Occasion</label>
+                <select style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                  <option>Birthday</option>
+                  <option>Anniversary</option>
+                  <option>Group Party</option>
+                  <option>Family Reunion</option>
+                  <option>Corporate</option>
+                </select>
+              </div>
+            </div>
+            <div class="bw-guests" data-tip="Select number of guests attending">
+              <span>👥 Guests: <strong id="guestCount">20</strong></span>
+              <div style="display:flex;gap:8px">
+                <button onclick="adjGuests(-5)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);cursor:pointer;font-size:14px">−</button>
+                <button onclick="adjGuests(5)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);cursor:pointer;font-size:14px">+</button>
+              </div>
+            </div>
+            <button class="bw-reserve" onclick="goPage('booking')" data-tip="You won't be charged yet — confirm on next step">Book This Venue</button>
+            <div class="bw-note">You won't be charged yet</div>
+            <div class="bw-breakdown" id="bwBreakdown">
+              <div class="bw-row"><span>₹12,000 × 6 hours</span><span>₹72,000</span></div>
+              <div class="bw-row"><span>Cleaning & setup fee</span><span>₹3,500</span></div>
+              <div class="bw-row"><span>PartyHouse service fee</span><span>₹6,300</span></div>
+              <div class="bw-row total"><span>Total</span><span>₹81,800</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BOOKING FLOW ===== -->
+  <div class="page" id="page-booking">
+    <div class="booking-page">
+      <div style="display:flex;margin-bottom:40px;gap:0">
+        <div class="prog-step-wrap"><div class="prog-dot active" id="pd1">1</div><div class="prog-label">Review</div></div>
+        <div style="flex:1;padding-top:15px"><div class="prog-line" id="pl1"></div></div>
+        <div class="prog-step-wrap"><div class="prog-dot pending" id="pd2">2</div><div class="prog-label">Payment</div></div>
+        <div style="flex:1;padding-top:15px"><div class="prog-line" id="pl2"></div></div>
+        <div class="prog-step-wrap"><div class="prog-dot pending" id="pd3">✓</div><div class="prog-label">Confirmed</div></div>
+      </div>
+
+      <!-- Step 1 -->
+      <div id="bookStep1">
+        <div class="booking-section">
+          <h3>Your party booking</h3>
+          <div class="trip-summary">
+            <div class="trip-img">🎉</div>
+            <div class="trip-detail">
+              <strong>The Skyline Rooftop Party Lounge</strong><br>
+              Bandra, Mumbai<br>
+              Date: December 20, 2026 &nbsp;·&nbsp; Duration: 6 hours<br>
+              Occasion: Birthday &nbsp;·&nbsp; 20 guests
+            </div>
+          </div>
+          <div class="price-breakdown">
+            <div class="pb-row"><span>₹12,000 × 6 hours</span><span>₹72,000</span></div>
+            <div class="pb-row"><span>Cleaning & setup fee</span><span>₹3,500</span></div>
+            <div class="pb-row"><span>PartyHouse service fee</span><span>₹6,300</span></div>
+            <div class="pb-row total"><span>Total (INR)</span><span>₹81,800</span></div>
+          </div>
+        </div>
+        <div class="booking-section">
+          <h3>Venue rules</h3>
+          <div style="font-size:13px;color:var(--muted);line-height:2">
+            ✅ Available 10:00 AM – 4:00 AM<br>
+            ✅ BYOB and outside catering allowed<br>
+            ✅ DJ & sound system included<br>
+            ❌ No fireworks or sparklers indoors<br>
+            ❌ No smoking inside venue
+          </div>
+        </div>
+        <div style="text-align:right">
+          <button class="next-btn" onclick="nextStep(2)">Continue to payment →</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div id="bookStep2" style="display:none">
+        <div class="booking-section">
+          <h3>Pay with</h3>
+          <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+            <button style="padding:10px 16px;border:2px solid var(--accent);border-radius:var(--r-md);font-size:13px;font-weight:600;background:#fff8f5;cursor:pointer">💳 Card</button>
+            <button style="padding:10px 16px;border:1.5px solid var(--border);border-radius:var(--r-md);font-size:13px;cursor:pointer">📱 UPI</button>
+            <button style="padding:10px 16px;border:1.5px solid var(--border);border-radius:var(--r-md);font-size:13px;cursor:pointer">🏦 Net Banking</button>
+          </div>
+          <div class="form-group"><label>Card Number</label><input class="form-input" type="text" placeholder="1234 5678 9012 3456"></div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0"><label>Expiry</label><input class="form-input" type="text" placeholder="MM / YY"></div>
+            <div class="form-group" style="margin-bottom:0"><label>CVV</label><input class="form-input" type="password" placeholder="•••" data-tip="3-digit security code"></div>
+          </div>
+        </div>
+        <div class="booking-section" style="background:#fff8f0;border-color:#ffe0b2">
+          <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700">
+            <span>Total charged today</span><span>₹81,800</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">Includes all taxes and fees</div>
+        </div>
+        <div>
+          <button class="back-btn" onclick="nextStep(1)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:14px 40px" onclick="nextStep(3)">Confirm & Pay ₹81,800</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="bookStep3" style="display:none">
+        <div class="booking-section">
+          <div class="confirm-anim">
+            <div class="confirm-icon">🎉</div>
+            <h2 style="font-family:var(--font-d);font-size:28px;margin-bottom:8px">Party Booked!</h2>
+            <p style="color:var(--muted);margin-bottom:16px">The Skyline Rooftop is reserved for your celebration on Dec 20, 2026.</p>
+            <div class="confirm-code">PH-MUM-2026-7743</div>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Confirmation sent to your email · Host will contact you within 2 hours</p>
+            <button style="background:var(--accent);color:#fff;padding:12px 28px;border-radius:var(--r-pill);font-weight:600;font-size:14px;cursor:pointer;margin-right:10px" onclick="goPage('trips')">View My Bookings</button>
+            <button style="border:1.5px solid var(--border);padding:12px 28px;border-radius:var(--r-pill);font-size:14px;font-weight:500;cursor:pointer;background:var(--surface)" onclick="goPage('home')">Back to Home</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOST DASHBOARD ===== -->
+  <div class="page" id="page-dashboard">
+    <div class="container">
+      <div class="dash-header">
+        <h1>Welcome back, Rahul 🎉</h1>
+        <p>Your venue dashboard — manage bookings, pricing, and availability</p>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card" data-tip="Total active venue listings"><div class="metric-label">Active Venues</div><div class="metric-value">2</div><div class="metric-trend">+1 this month</div></div>
+        <div class="metric-card" data-tip="Booking requests awaiting approval"><div class="metric-label">Pending Requests</div><div class="metric-value">3</div><div class="metric-trend" style="color:var(--warn)">Action needed</div></div>
+        <div class="metric-card" data-tip="Total earnings this month"><div class="metric-label">May Earnings</div><div class="metric-value">₹2.4L</div><div class="metric-trend">↑ 22% vs last month</div></div>
+        <div class="metric-card" data-tip="Average rating from party guests"><div class="metric-label">Avg Rating</div><div class="metric-value">4.96</div><div class="metric-trend">⭐ Top Host status</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h2>Upcoming Bookings</h2>
+          <table class="booking-table">
+            <thead><tr><th>Guest</th><th>Venue</th><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Aditya K.</strong></td><td>Skyline Rooftop</td><td>Jun 10</td><td>🎂 Birthday</td><td>₹81,800</td><td><span class="status-badge status-confirmed">Confirmed</span></td></tr>
+              <tr><td><strong>Smita M.</strong></td><td>Skyline Rooftop</td><td>Jun 14</td><td>💍 Anniversary</td><td>₹54,500</td><td><span class="status-badge status-pending">Pending</span></td></tr>
+              <tr><td><strong>Raj S.</strong></td><td>Garden Villa</td><td>Jun 20</td><td>👨‍👩‍👧‍👦 Family</td><td>₹42,000</td><td><span class="status-badge status-confirmed">Confirmed</span></td></tr>
+              <tr><td><strong>TechCorp</strong></td><td>Skyline Rooftop</td><td>Jun 25</td><td>🎪 Corporate</td><td>₹1,20,000</td><td><span class="status-badge status-pending">Pending</span></td></tr>
+              <tr><td><strong>Meera T.</strong></td><td>Garden Villa</td><td>Jul 4</td><td>🎉 Group</td><td>₹36,000</td><td><span class="status-badge status-cancelled">Cancelled</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="dash-card" style="margin-bottom:20px">
+            <h2>Quick Actions</h2>
+            <div class="quick-actions">
+              <button class="qa-btn primary" onclick="goPage('new-listing')" data-tip="Add a new party venue">➕ Add New Venue</button>
+              <button class="qa-btn" data-tip="View your booking calendar">📅 Booking Calendar</button>
+              <button class="qa-btn" data-tip="Message your guests">💬 Message Guests</button>
+              <button class="qa-btn" data-tip="Adjust your pricing">💰 Pricing Manager</button>
+              <button class="qa-btn" data-tip="View earnings breakdown">📊 Earnings Report</button>
+            </div>
+          </div>
+          <div class="dash-card">
+            <h2>Your Venues</h2>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;gap:12px;align-items:center;cursor:pointer" onclick="goPage('listing')">
+                <div style="width:48px;height:48px;border-radius:var(--r-md);background:#ffe0b2;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🌃</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Skyline Rooftop Lounge</div><div style="font-size:12px;color:var(--muted)">₹12,000/hr · Max 50 · ⭐ 4.97</div></div>
+                <span class="status-badge status-confirmed">Active</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:center">
+                <div style="width:48px;height:48px;border-radius:var(--r-md);background:#c8e6c9;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🌳</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Bandra Garden Villa</div><div style="font-size:12px;color:var(--muted)">₹8,000/hr · Max 80 · ⭐ 4.91</div></div>
+                <span class="status-badge status-confirmed">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="height:48px"></div>
+    </div>
+  </div>
+
+  <!-- ===== NEW LISTING WIZARD ===== -->
+  <div class="page" id="page-new-listing">
+    <div class="wizard-page">
+      <div class="wizard-progress"><div class="wizard-bar" id="wizBar" style="width:20%"></div></div>
+      <div id="wizStep1">
+        <div class="wizard-step-title">What type of venue is it?</div>
+        <div class="wizard-step-sub">Choose the category that best describes your party space</div>
+        <div class="type-grid">
+          <div class="type-card sel" onclick="selType(this)" data-tip="Rooftop or terrace space"><div class="tc-icon">🌃</div><h4>Rooftop / Terrace</h4></div>
+          <div class="type-card" onclick="selType(this)" data-tip="Villa or bungalow"><div class="tc-icon">🏡</div><h4>Villa / Bungalow</h4></div>
+          <div class="type-card" onclick="selType(this)" data-tip="Private hall or banquet"><div class="tc-icon">🎪</div><h4>Private Hall</h4></div>
+          <div class="type-card" onclick="selType(this)" data-tip="Garden or outdoor space"><div class="tc-icon">🌳</div><h4>Garden / Lawn</h4></div>
+          <div class="type-card" onclick="selType(this)" data-tip="Pool or poolside party space"><div class="tc-icon">🏊</div><h4>Pool Space</h4></div>
+          <div class="type-card" onclick="selType(this)" data-tip="Unique or specialty venue"><div class="tc-icon">✨</div><h4>Unique Venue</h4></div>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="goPage('dashboard')">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(2)">Next →</button>
+        </div>
+      </div>
+      <div id="wizStep2" style="display:none">
+        <div class="wizard-step-title">Capacity & occasion types</div>
+        <div class="wizard-step-sub">Tell guests who and how many your venue can host</div>
+        <div style="margin-bottom:24px">
+          <div class="pricing-row"><div><label>Maximum Guests</label><small>Total capacity of your venue</small></div><div class="filter-steps"><button class="step-btn" onclick="adjWiz('wg',-5)">−</button><span id="wg-val" style="min-width:32px;text-align:center;font-weight:600">30</span><button class="step-btn" onclick="adjWiz('wg',5)">+</button></div></div>
+          <div class="pricing-row" style="border-bottom:none"><div><label>Minimum booking hours</label><small>Shortest event you'll host</small></div><div class="filter-steps"><button class="step-btn" onclick="adjWiz('wh',-1)">−</button><span id="wh-val" style="min-width:32px;text-align:center;font-weight:600">4</span><button class="step-btn" onclick="adjWiz('wh',1)">+</button></div></div>
+        </div>
+        <div style="margin-bottom:24px">
+          <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);display:block;margin-bottom:12px">Occasions you welcome</label>
+          <div class="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <label class="filter-check"><input type="checkbox" checked> 💑 Couple events</label>
+            <label class="filter-check"><input type="checkbox" checked> 👨‍👩‍👧‍👦 Family parties</label>
+            <label class="filter-check"><input type="checkbox" checked> 🎉 Group parties</label>
+            <label class="filter-check"><input type="checkbox" checked> 🎂 Birthdays</label>
+            <label class="filter-check"><input type="checkbox"> 💍 Anniversaries</label>
+            <label class="filter-check"><input type="checkbox"> 🎪 Corporate events</label>
+          </div>
+        </div>
+        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(1)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(3)">Next →</button></div>
+      </div>
+      <div id="wizStep3" style="display:none">
+        <div class="wizard-step-title">What does your venue offer?</div>
+        <div class="wizard-step-sub">Select all amenities and features available at your party space</div>
+        <div class="amenity-check-grid">
+          <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">🎵</div><span>DJ / Sound</span></div>
+          <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">💡</div><span>Party Lights</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍾</div><span>Bar Setup</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍽</div><span>Catering</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎊</div><span>Décor</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🏊</div><span>Pool</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🅿</div><span>Parking</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📷</div><span>Photo Booth</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎮</div><span>Games Area</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔥</div><span>BBQ Grill</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎤</div><span>Karaoke</span></div>
+          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍿</div><span>Projector</span></div>
+        </div>
+        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(2)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(4)">Next →</button></div>
+      </div>
+      <div id="wizStep4" style="display:none">
+        <div class="wizard-step-title">Set your pricing</div>
+        <div class="wizard-step-sub">PartyHouse takes a 5% host fee. You keep the rest.</div>
+        <div style="margin-bottom:24px">
+          <div class="pricing-row"><div><label>Base hourly rate</label><small>Standard weekday pricing</small></div><input class="price-input" type="number" value="5000" placeholder="₹"></div>
+          <div class="pricing-row"><div><label>Weekend rate</label><small>Fri evening – Sun</small></div><input class="price-input" type="number" value="8000" placeholder="₹"></div>
+          <div class="pricing-row"><div><label>Cleaning & setup fee</label><small>One-time per booking</small></div><input class="price-input" type="number" value="2500" placeholder="₹"></div>
+          <div class="pricing-row" style="border-bottom:none"><div><label>Security deposit</label><small>Refundable after event</small></div><input class="price-input" type="number" value="10000" placeholder="₹"></div>
+        </div>
+        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(3)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(5)">Next →</button></div>
+      </div>
+      <div id="wizStep5" style="display:none">
+        <div style="text-align:center;padding:40px 0">
+          <div style="font-size:64px;margin-bottom:24px">🚀</div>
+          <div class="wizard-step-title" style="text-align:center">Ready to go live!</div>
+          <p style="color:var(--muted);font-size:15px;margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto">Your party venue is configured. Once published, partygoers can discover and book it instantly.</p>
+          <div style="background:#fff8f0;border-radius:var(--r-lg);padding:20px;margin-bottom:28px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">
+            <div style="font-size:13px;line-height:2;color:var(--muted)">✅ Venue type selected<br>✅ Capacity & occasions set<br>✅ Amenities listed<br>✅ Pricing configured</div>
+          </div>
+          <button style="background:var(--accent);color:#fff;padding:14px 40px;border-radius:var(--r-pill);font-weight:600;font-size:16px;cursor:pointer;margin-right:10px" onclick="goPage('dashboard')">🎉 Publish Venue</button>
+          <button style="border:1.5px solid var(--border);padding:13px 24px;border-radius:var(--r-pill);font-size:14px;cursor:pointer;background:var(--surface)" data-tip="Save as draft to edit later">Save as Draft</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MY BOOKINGS ===== -->
+  <div class="page" id="page-trips">
+    <div class="container">
+      <div class="dash-header"><h1>My Party Bookings</h1><p>All your upcoming and past celebrations</p></div>
+      <div style="display:flex;gap:12px;margin-bottom:28px">
+        <button style="padding:9px 20px;border-radius:var(--r-pill);border:2px solid var(--text);font-weight:600;font-size:13px;background:var(--text);color:#fff" data-tip="Upcoming bookings">Upcoming</button>
+        <button style="padding:9px 20px;border-radius:var(--r-pill);border:1.5px solid var(--border);font-size:13px;background:var(--surface)" data-tip="Past party bookings">Past</button>
+        <button style="padding:9px 20px;border-radius:var(--r-pill);border:1.5px solid var(--border);font-size:13px;background:var(--surface)" data-tip="Cancelled bookings">Cancelled</button>
+      </div>
+      <div class="trips-grid">
+        <div class="trip-card"><div class="trip-img-area">🌃</div><div class="trip-card-body"><h3>Skyline Rooftop Lounge</h3><p>Bandra, Mumbai · Dec 20, 2026 · 6 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">🎂 Birthday · 20 guests</div><span class="trip-status upcoming">Upcoming</span></div></div>
+        <div class="trip-card"><div class="trip-img-area" style="background:#c8e6c9">🌳</div><div class="trip-card-body"><h3>Bandra Garden Villa</h3><p>Bandra, Mumbai · Jan 12, 2027 · 8 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">👨‍👩‍👧‍👦 Family Party · 45 guests</div><span class="trip-status upcoming">Upcoming</span></div></div>
+        <div class="trip-card"><div class="trip-img-area" style="background:#ffe0b2">🎊</div><div class="trip-card-body"><h3>The Party Loft</h3><p>Juhu, Mumbai · April 2026 · 5 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">💑 Anniversary · 2 guests</div><span class="trip-status completed">Completed</span></div></div>
+      </div>
+      <div style="height:48px"></div>
+    </div>
+  </div>
+
+  <!-- ===== WISHLIST ===== -->
+  <div class="page" id="page-wishlist">
+    <div class="container">
+      <div class="dash-header"><h1>Saved Venues</h1><p>Party spaces you want to revisit</p></div>
+      <div class="prop-grid" id="wishlistGrid"></div>
+      <div style="height:64px"></div>
+    </div>
+  </div>
+
+  <!-- ===== AUTH ===== -->
+  <div class="page" id="page-auth">
+    <div class="auth-page">
+      <div class="auth-box">
+        <div style="font-size:32px;text-align:center;margin-bottom:12px">🎉</div>
+        <h2>Welcome to PartyHouse</h2>
+        <p>Log in or sign up to book venues and host parties</p>
+        <div class="auth-tabs">
+          <div class="auth-tab active" onclick="authTab(this,'login')">Log In</div>
+          <div class="auth-tab" onclick="authTab(this,'signup')">Sign Up</div>
+        </div>
+        <button class="social-btn"><span style="font-weight:700;font-size:16px;color:#4285F4">G</span> Continue with Google</button>
+        <button class="social-btn"><span style="font-weight:700;font-size:16px;color:#1877F2">f</span> Continue with Facebook</button>
+        <div class="divider">or</div>
+        <div class="form-group"><label>Email Address</label><input class="form-input" type="email" placeholder="you@example.com"></div>
+        <div class="form-group" id="nameField" style="display:none"><label>Full Name</label><input class="form-input" type="text" placeholder="Your name"></div>
+        <div class="form-group"><label>Password</label><input class="form-input" type="password" placeholder="••••••••"></div>
+        <button class="submit-btn" id="authSubmit" onclick="handleLogin()">Log In →</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /pages -->
+
+<script src="app.js"></script>
+</body>
+</html>
