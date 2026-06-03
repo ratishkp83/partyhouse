@@ -5,8 +5,8 @@
 // from: Supabase Dashboard → Settings → API
 // ============================================================
 
-const SUPABASE_URL  = 'YOUR_SUPABASE_URL';   // e.g. https://xyzxyz.supabase.co
-const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY'; // starts with eyJ...
+const SUPABASE_URL  = 'https://hxeskohikmtpzfrmovot.supabase.co';   // e.g. https://xyzxyz.supabase.co
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZXNrb2hpa210cHpmcm1vdm90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDg5NjEsImV4cCI6MjA5NjAyNDk2MX0.THGndPkxVSZMr1n8gt3kYCT4YL9nrT5CbHThvP9PBFk'; // starts with eyJ...
 
 // Load Supabase from CDN (added via index.html script tag)
 const { createClient } = supabase;
