@@ -16,6 +16,25 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 let currentUser    = null;
 let currentProfile = null;
 
+// Recover session from URL hash after OAuth redirect
+// (Google sends back #access_token=...&refresh_token=... in the URL)
+if (window.location.hash && window.location.hash.includes('access_token')) {
+  db.auth.getSessionFromUrl({ storeSession: true }).then(({ data, error }) => {
+    if (!error && data?.session) {
+      // Clean the hash from the URL without reloading
+      history.replaceState(null, '', window.location.pathname);
+    }
+  });
+}
+
+// Also handle the newer PKCE flow (code in query string)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('code')) {
+  db.auth.exchangeCodeForSession(urlParams.get('code')).then(() => {
+    history.replaceState(null, '', window.location.pathname);
+  });
+}
+
 // Listen to auth changes (login / logout / token refresh)
 db.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
@@ -69,9 +88,13 @@ const Auth = {
   },
 
   async signInWithGoogle() {
+    // Build the correct redirect URL — works on GitHub Pages, Cloudflare Pages, and localhost
+    const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+    const redirectTo = base.endsWith('/') ? base : base + '/';
+
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo }
     });
     if (error) showToast(error.message, 'error');
   },
