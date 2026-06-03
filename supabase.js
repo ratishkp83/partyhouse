@@ -16,22 +16,15 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 let currentUser    = null;
 let currentProfile = null;
 
-// Recover session from URL hash after OAuth redirect
-// (Google sends back #access_token=...&refresh_token=... in the URL)
-if (window.location.hash && window.location.hash.includes('access_token')) {
-  db.auth.getSessionFromUrl({ storeSession: true }).then(({ data, error }) => {
-    if (!error && data?.session) {
-      // Clean the hash from the URL without reloading
-      history.replaceState(null, '', window.location.pathname);
-    }
-  });
-}
-
-// Also handle the newer PKCE flow (code in query string)
+// Handle PKCE OAuth callback — Supabase JS v2 sends ?code= in the query string
+// exchangeCodeForSession exchanges it for a real session; onAuthStateChange fires after.
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('code')) {
-  db.auth.exchangeCodeForSession(urlParams.get('code')).then(() => {
-    history.replaceState(null, '', window.location.pathname);
+  db.auth.exchangeCodeForSession(urlParams.get('code')).then(({ error }) => {
+    if (!error) {
+      // Clean the ?code= param from the URL without a page reload
+      history.replaceState(null, '', window.location.pathname);
+    }
   });
 }
 
@@ -41,6 +34,12 @@ db.auth.onAuthStateChange(async (event, session) => {
     currentUser = session.user;
     currentProfile = await Auth.getProfile(session.user.id);
     updateNavForUser(currentProfile);
+    // On fresh sign-in (covers Google OAuth callback, email confirm, magic link, etc.)
+    // navigate to home so the user sees the app instead of a blank auth state.
+    if (event === 'SIGNED_IN') {
+      showToast('Welcome back! 🎉', 'success');
+      if (typeof goPage === 'function') goPage('home');
+    }
   } else {
     currentUser    = null;
     currentProfile = null;
@@ -82,8 +81,7 @@ const Auth = {
     showToast('Signing in…', 'info');
     const { data, error } = await db.auth.signInWithPassword({ email, password });
     if (error) { showToast(error.message, 'error'); return null; }
-    showToast('Welcome back! 🎉', 'success');
-    goPage('home');
+    // onAuthStateChange fires after this and shows the welcome toast + navigates home
     return data;
   },
 
