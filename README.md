@@ -2,34 +2,45 @@
 
 > **Find and book unique party venues for couples, families, and groups.**
 
-PartyHouse is a modern venue-rental marketplace focused exclusively on celebrations — birthdays, anniversaries, group parties, family reunions, and corporate events.
+PartyHouse is a full-stack venue-rental marketplace for celebrations — birthdays, anniversaries, group parties, family reunions, and corporate events — powered by **Supabase** for auth, database, and storage.
 
 ---
 
-## 🚀 Live Pages
+## 🚀 Live Site
 
-| Page | Description |
-|------|-------------|
-| `/` | Home — hero search, featured venues, party type cards, how-it-works |
-| Search Results | Filter by party type, capacity, price, amenities |
-| Listing Detail | Full venue page with gallery, amenities, reviews, booking widget |
-| Booking Flow | 3-step wizard — Review → Payment → Confirmation |
-| Host Dashboard | Metrics, upcoming bookings, quick actions |
-| New Listing Wizard | 5-step venue onboarding |
-| My Bookings | Upcoming and past party bookings |
-| Saved Venues | Wishlist of favourite party spaces |
-| Login / Sign Up | Auth with Google, Facebook, or email |
+**[https://ratishkp83.github.io/partyhouse](https://ratishkp83.github.io/partyhouse)**
 
 ---
 
-## 🎨 Design
+## ⚡ Supabase Setup (required for live data)
 
-- **Dark theme** — deep blacks, vivid coral/orange gradient accent
-- **Typography** — Syne (headings) + DM Sans (body)
-- **Tooltips** — every interactive element has descriptive hover tooltips
-- **Party types** — Couple 💑 · Family 👨‍👩‍👧‍👦 · Group 🎉
-- Animated confetti on the hero section
-- Fully responsive layout
+### 1. Create a Supabase project
+Go to [supabase.com](https://supabase.com) → New Project → choose a region close to India (Singapore).
+
+### 2. Run the schema
+- Open **SQL Editor** in your Supabase dashboard
+- Paste the full contents of `schema.sql` and click **Run**
+- This creates all tables, RLS policies, and triggers
+
+### 3. Configure your keys
+Open `supabase.js` and replace:
+```js
+const SUPABASE_URL  = 'YOUR_SUPABASE_URL';    // Settings → API → Project URL
+const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY'; // Settings → API → anon public key
+```
+
+### 4. Enable Google OAuth (optional)
+- Supabase Dashboard → Authentication → Providers → Google → Enable
+- Add your Google OAuth client ID + secret
+
+### 5. Enable Storage
+- Supabase Dashboard → Storage → Create bucket: `venue-photos` (public)
+- Create bucket: `avatars` (public)
+
+### 6. Seed your first host account
+- Sign up via the site
+- In Supabase → Table Editor → profiles → set your `role` to `host`
+- Uncomment the seed INSERT in `schema.sql` and run with your UUID
 
 ---
 
@@ -37,12 +48,28 @@ PartyHouse is a modern venue-rental marketplace focused exclusively on celebrati
 
 ```
 partyhouse/
-├── index.html       # Single-page app — all pages/views
-├── styles.css       # Complete design system + component styles
-├── app.js           # All interactivity, routing, data
-├── favicon.svg      # SVG favicon
+├── index.html      # Single-page app — all pages/views
+├── styles.css      # Dark design system + all component styles
+├── supabase.js     # Supabase client, Auth/Venues/Bookings/Wishlist APIs
+├── app.js          # UI logic, navigation, forms, page loaders
+├── schema.sql      # Full PostgreSQL schema + RLS policies
+├── favicon.svg     # Party emoji favicon
 └── README.md
 ```
+
+---
+
+## 🗄 Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | Users (guests + hosts), extends Supabase auth |
+| `venues` | Party venue listings with capacity, pricing, amenities |
+| `bookings` | Reservations linking guests to venues |
+| `reviews` | Ratings + comments, auto-updates venue avg rating |
+| `wishlists` | Saved venues per user |
+| `messages` | Host ↔ guest messaging with real-time support |
+| `payments` | Razorpay payment records |
 
 ---
 
@@ -50,46 +77,39 @@ partyhouse/
 
 | Layer | Choice |
 |-------|--------|
-| Frontend | Vanilla HTML + CSS + JavaScript (no build step) |
-| Fonts | Google Fonts — Syne + DM Sans |
-| Icons | Emoji-based (zero dependencies) |
-| Hosting | GitHub Pages / Vercel / Netlify |
+| Frontend | Vanilla HTML + CSS + JavaScript |
+| Auth | Supabase Auth (email + Google OAuth) |
+| Database | PostgreSQL via Supabase |
+| Storage | Supabase Storage (venue photos) |
+| Payments | Razorpay (integration ready) |
+| Hosting | Cloudflare Pages / GitHub Pages |
+| CDN + DNS | Cloudflare |
 
 ---
 
-## ⚡ Getting Started
+## 🌐 Deploy to Cloudflare Pages
 
-```bash
-# Clone the repo
-git clone https://github.com/ratishkp83/partyhouse.git
-cd partyhouse
-
-# Open in browser (no build step needed)
-open index.html
-
-# Or serve locally
-npx serve .
-# or
-python3 -m http.server 3000
-```
+1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com)
+2. Workers & Pages → Create → Pages → Connect to Git
+3. Select `ratishkp83/partyhouse` → main branch → no build command needed
+4. Add environment variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+5. Your site deploys instantly on every `git push`
 
 ---
 
-## 🌐 Deploy to GitHub Pages
+## 📈 Roadmap
 
-1. Go to **Settings → Pages** in your GitHub repo
-2. Set source to **main branch / root folder**
-3. Your site will be live at `https://ratishkp83.github.io/partyhouse`
-
----
-
-## 🗺 Roadmap
-
-- [ ] Backend API (Node.js + Supabase)
-- [ ] Real image uploads (Supabase Storage)
-- [ ] Map integration (Mapbox)
+- [x] Full venue browsing + search
+- [x] Auth (email + Google)
+- [x] Supabase database + RLS
+- [x] Booking flow
+- [x] Host dashboard
+- [x] Wishlists
+- [ ] Razorpay payment gateway
 - [ ] Real-time messaging
-- [ ] Payment gateway (Razorpay)
+- [ ] Venue photo uploads
+- [ ] Map view (Mapbox)
+- [ ] Email notifications (Supabase Edge Functions)
 - [ ] Mobile app (React Native)
 
 ---

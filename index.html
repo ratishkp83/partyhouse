@@ -8,6 +8,8 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -69,7 +71,7 @@
           <div class="dd-item" onclick="">⚙️ Account Settings</div>
           <div class="dd-item" onclick="">❓ Help Center</div>
           <div class="dd-div"></div>
-          <div class="dd-item" id="authToggleItem" onclick="handleAuth()">🔐 Log In / Sign Up</div>
+          <div class="dd-item" id="authToggleItem" onclick="handleAuth()" id="authNavItem">🔐 Log In / Sign Up</div>
         </div>
       </div>
     </div>
@@ -425,7 +427,7 @@
           <div class="section-divider"></div>
 
           <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">Guest reviews</h3>
-          <div class="review-grid">
+          <div class="review-grid" id="reviewGrid">
             <div class="review-card">
               <div class="reviewer"><div class="reviewer-av">AK</div><div><div class="reviewer-name">Aditya K.</div><div class="reviewer-date">April 2026 · Birthday</div></div></div>
               <div class="stars">★★★★★</div>
@@ -494,7 +496,7 @@
                 <button onclick="adjGuests(5)" style="width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);cursor:pointer;font-size:14px">+</button>
               </div>
             </div>
-            <button class="bw-reserve" onclick="goPage('booking')" data-tip="You won't be charged yet — confirm on next step">Book This Venue</button>
+            <button class="bw-reserve" onclick="startBooking()" data-tip="You won't be charged yet — confirm on next step">Book This Venue</button>
             <div class="bw-note">You won't be charged yet</div>
             <div class="bw-breakdown" id="bwBreakdown">
               <div class="bw-row"><span>₹12,000 × 6 hours</span><span>₹72,000</span></div>
@@ -526,10 +528,9 @@
           <div class="trip-summary">
             <div class="trip-img">🎉</div>
             <div class="trip-detail">
-              <strong>The Skyline Rooftop Party Lounge</strong><br>
-              Bandra, Mumbai<br>
-              Date: December 20, 2026 &nbsp;·&nbsp; Duration: 6 hours<br>
-              Occasion: Birthday &nbsp;·&nbsp; 20 guests
+              <strong id="bookingSummaryVenue">The Skyline Rooftop Party Lounge</strong><br>
+              <span id="bookingSummaryCity">Bandra, Mumbai</span><br>
+              <span id="bookingSummaryDate">Date: TBD · 6 hours · Birthday · 20 guests</span>
             </div>
           </div>
           <div class="price-breakdown">
@@ -577,7 +578,7 @@
         </div>
         <div>
           <button class="back-btn" onclick="nextStep(1)">← Back</button>
-          <button class="next-btn" style="width:auto;padding:14px 40px" onclick="nextStep(3)">Confirm & Pay ₹81,800</button>
+          <button class="next-btn" style="width:auto;padding:14px 40px" onclick="confirmPayment()">Confirm & Pay ₹81,800</button>
         </div>
       </div>
 
@@ -588,7 +589,7 @@
             <div class="confirm-icon">🎉</div>
             <h2 style="font-family:var(--font-d);font-size:28px;margin-bottom:8px">Party Booked!</h2>
             <p style="color:var(--muted);margin-bottom:16px">The Skyline Rooftop is reserved for your celebration on Dec 20, 2026.</p>
-            <div class="confirm-code">PH-MUM-2026-7743</div>
+            <div class="confirm-code"><span id="confirmationCode">PH-MUM-2026-7743</span></div>
             <p style="font-size:13px;color:var(--muted);margin-bottom:24px">Confirmation sent to your email · Host will contact you within 2 hours</p>
             <button style="background:var(--accent);color:#fff;padding:12px 28px;border-radius:var(--r-pill);font-weight:600;font-size:14px;cursor:pointer;margin-right:10px" onclick="goPage('trips')">View My Bookings</button>
             <button style="border:1.5px solid var(--border);padding:12px 28px;border-radius:var(--r-pill);font-size:14px;font-weight:500;cursor:pointer;background:var(--surface)" onclick="goPage('home')">Back to Home</button>
@@ -615,8 +616,8 @@
         <div class="dash-card">
           <h2>Upcoming Bookings</h2>
           <table class="booking-table">
-            <thead><tr><th>Guest</th><th>Venue</th><th>Date</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
-            <tbody>
+            <thead><tr><th>Guest</th><th>Venue</th><th>Date</th><th>Occasion</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="dashBookingsBody">
               <tr><td><strong>Aditya K.</strong></td><td>Skyline Rooftop</td><td>Jun 10</td><td>🎂 Birthday</td><td>₹81,800</td><td><span class="status-badge status-confirmed">Confirmed</span></td></tr>
               <tr><td><strong>Smita M.</strong></td><td>Skyline Rooftop</td><td>Jun 14</td><td>💍 Anniversary</td><td>₹54,500</td><td><span class="status-badge status-pending">Pending</span></td></tr>
               <tr><td><strong>Raj S.</strong></td><td>Garden Villa</td><td>Jun 20</td><td>👨‍👩‍👧‍👦 Family</td><td>₹42,000</td><td><span class="status-badge status-confirmed">Confirmed</span></td></tr>
@@ -638,7 +639,7 @@
           </div>
           <div class="dash-card">
             <h2>Your Venues</h2>
-            <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;flex-direction:column;gap:14px" id="dashVenueList">
               <div style="display:flex;gap:12px;align-items:center;cursor:pointer" onclick="goPage('listing')">
                 <div style="width:48px;height:48px;border-radius:var(--r-md);background:#ffe0b2;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🌃</div>
                 <div style="flex:1"><div style="font-size:13px;font-weight:600">Skyline Rooftop Lounge</div><div style="font-size:12px;color:var(--muted)">₹12,000/hr · Max 50 · ⭐ 4.97</div></div>
@@ -751,7 +752,7 @@
         <button style="padding:9px 20px;border-radius:var(--r-pill);border:1.5px solid var(--border);font-size:13px;background:var(--surface)" data-tip="Past party bookings">Past</button>
         <button style="padding:9px 20px;border-radius:var(--r-pill);border:1.5px solid var(--border);font-size:13px;background:var(--surface)" data-tip="Cancelled bookings">Cancelled</button>
       </div>
-      <div class="trips-grid">
+      <div class="trips-grid" id="tripsGrid">
         <div class="trip-card"><div class="trip-img-area">🌃</div><div class="trip-card-body"><h3>Skyline Rooftop Lounge</h3><p>Bandra, Mumbai · Dec 20, 2026 · 6 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">🎂 Birthday · 20 guests</div><span class="trip-status upcoming">Upcoming</span></div></div>
         <div class="trip-card"><div class="trip-img-area" style="background:#c8e6c9">🌳</div><div class="trip-card-body"><h3>Bandra Garden Villa</h3><p>Bandra, Mumbai · Jan 12, 2027 · 8 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">👨‍👩‍👧‍👦 Family Party · 45 guests</div><span class="trip-status upcoming">Upcoming</span></div></div>
         <div class="trip-card"><div class="trip-img-area" style="background:#ffe0b2">🎊</div><div class="trip-card-body"><h3>The Party Loft</h3><p>Juhu, Mumbai · April 2026 · 5 hrs</p><div style="font-size:12px;color:var(--muted);margin-bottom:8px">💑 Anniversary · 2 guests</div><span class="trip-status completed">Completed</span></div></div>
@@ -780,19 +781,20 @@
           <div class="auth-tab active" onclick="authTab(this,'login')">Log In</div>
           <div class="auth-tab" onclick="authTab(this,'signup')">Sign Up</div>
         </div>
-        <button class="social-btn"><span style="font-weight:700;font-size:16px;color:#4285F4">G</span> Continue with Google</button>
+        <button class="social-btn" onclick="handleGoogleAuth()"><span style="font-weight:700;font-size:16px;color:#4285F4">G</span> Continue with Google</button>
         <button class="social-btn"><span style="font-weight:700;font-size:16px;color:#1877F2">f</span> Continue with Facebook</button>
         <div class="divider">or</div>
-        <div class="form-group"><label>Email Address</label><input class="form-input" type="email" placeholder="you@example.com"></div>
-        <div class="form-group" id="nameField" style="display:none"><label>Full Name</label><input class="form-input" type="text" placeholder="Your name"></div>
-        <div class="form-group"><label>Password</label><input class="form-input" type="password" placeholder="••••••••"></div>
-        <button class="submit-btn" id="authSubmit" onclick="handleLogin()">Log In →</button>
+        <div class="form-group"><label>Email Address</label><input class="form-input" type="email" placeholder="you@example.com" id="authEmail"></div>
+        <div class="form-group" id="nameField" style="display:none"><label>Full Name</label><input class="form-input" type="text" placeholder="Your name" id="authName"></div>
+        <div class="form-group"><label>Password</label><input class="form-input" type="password" placeholder="••••••••" id="authPassword"></div>
+        <button class="submit-btn" id="authSubmit" onclick="handleAuthSubmit()">Log In →</button>
       </div>
     </div>
   </div>
 
 </div><!-- /pages -->
 
+<script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,261 @@
+-- ============================================================
+-- PartyHouse — Supabase Database Schema
+-- Run this entire file in: Supabase → SQL Editor → New Query
+-- ============================================================
+
+-- ── Extensions ───────────────────────────────────────────────
+create extension if not exists "uuid-ossp";
+
+-- ── Drop tables if rebuilding ────────────────────────────────
+drop table if exists messages  cascade;
+drop table if exists reviews   cascade;
+drop table if exists payments  cascade;
+drop table if exists bookings  cascade;
+drop table if exists wishlists cascade;
+drop table if exists venues    cascade;
+drop table if exists profiles  cascade;
+
+-- ── profiles ─────────────────────────────────────────────────
+-- Extends Supabase auth.users with extra fields
+create table profiles (
+  id          uuid references auth.users(id) on delete cascade primary key,
+  full_name   text,
+  phone       text,
+  avatar_url  text,
+  role        text not null default 'guest' check (role in ('guest','host','admin')),
+  city        text,
+  bio         text,
+  created_at  timestamptz default now()
+);
+
+-- Auto-create profile on signup
+create or replace function handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into profiles (id, full_name, avatar_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email,'@',1)),
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure handle_new_user();
+
+-- ── venues ───────────────────────────────────────────────────
+create table venues (
+  id                uuid default uuid_generate_v4() primary key,
+  host_id           uuid references profiles(id) on delete cascade not null,
+  name              text not null,
+  description       text,
+  venue_type        text not null,          -- Rooftop, Villa, Garden, Pool, Hall, Unique
+  city              text not null,
+  address           text,
+  lat               numeric(10,7),
+  lng               numeric(10,7),
+  capacity          int not null default 20,
+  price_per_hour    int not null,           -- INR
+  min_hours         int not null default 4,
+  cleaning_fee      int default 0,
+  security_deposit  int default 0,
+  amenities         text[] default '{}',    -- ['WiFi','Pool','DJ','Catering',...]
+  occasions         text[] default '{}',    -- ['Couple','Family','Group','Birthday',...]
+  photos            text[] default '{}',    -- Supabase Storage URLs
+  cover_emoji       text default '🎉',
+  badge_label       text,
+  is_active         boolean default true,
+  is_instant_book   boolean default false,
+  rating_avg        numeric(3,2) default 0,
+  review_count      int default 0,
+  created_at        timestamptz default now(),
+  updated_at        timestamptz default now()
+);
+
+-- ── bookings ─────────────────────────────────────────────────
+create table bookings (
+  id              uuid default uuid_generate_v4() primary key,
+  venue_id        uuid references venues(id) on delete restrict not null,
+  guest_id        uuid references profiles(id) on delete restrict not null,
+  party_date      date not null,
+  start_time      time not null default '18:00',
+  hours           int not null,
+  occasion        text,
+  guests_count    int not null default 10,
+  price_per_hour  int not null,
+  cleaning_fee    int default 0,
+  service_fee     int default 0,
+  total_price     int not null,
+  status          text default 'pending' check (status in ('pending','confirmed','cancelled','completed')),
+  host_notes      text,
+  guest_notes     text,
+  confirmation_code text unique,
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+
+-- Auto-generate confirmation code
+create or replace function generate_confirmation_code()
+returns trigger language plpgsql as $$
+declare
+  city_code text;
+begin
+  select upper(left(city, 3)) into city_code from venues where id = new.venue_id;
+  new.confirmation_code := 'PH-' || city_code || '-' || to_char(now(),'YYYY') || '-' || floor(random()*9000+1000)::text;
+  return new;
+end;
+$$;
+
+drop trigger if exists set_confirmation_code on bookings;
+create trigger set_confirmation_code
+  before insert on bookings
+  for each row execute procedure generate_confirmation_code();
+
+-- ── reviews ──────────────────────────────────────────────────
+create table reviews (
+  id           uuid default uuid_generate_v4() primary key,
+  booking_id   uuid references bookings(id) on delete cascade not null unique,
+  venue_id     uuid references venues(id) on delete cascade not null,
+  reviewer_id  uuid references profiles(id) on delete cascade not null,
+  rating       int not null check (rating between 1 and 5),
+  comment      text,
+  created_at   timestamptz default now()
+);
+
+-- Update venue rating average when a review is inserted/updated
+create or replace function update_venue_rating()
+returns trigger language plpgsql as $$
+begin
+  update venues
+  set
+    rating_avg   = (select round(avg(rating)::numeric, 2) from reviews where venue_id = new.venue_id),
+    review_count = (select count(*) from reviews where venue_id = new.venue_id)
+  where id = new.venue_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_review_upsert on reviews;
+create trigger on_review_upsert
+  after insert or update on reviews
+  for each row execute procedure update_venue_rating();
+
+-- ── wishlists ─────────────────────────────────────────────────
+create table wishlists (
+  id         uuid default uuid_generate_v4() primary key,
+  user_id    uuid references profiles(id) on delete cascade not null,
+  venue_id   uuid references venues(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  unique(user_id, venue_id)
+);
+
+-- ── messages ─────────────────────────────────────────────────
+create table messages (
+  id          uuid default uuid_generate_v4() primary key,
+  sender_id   uuid references profiles(id) on delete cascade not null,
+  receiver_id uuid references profiles(id) on delete cascade not null,
+  venue_id    uuid references venues(id) on delete set null,
+  booking_id  uuid references bookings(id) on delete set null,
+  content     text not null,
+  read_at     timestamptz,
+  created_at  timestamptz default now()
+);
+
+-- ── payments ─────────────────────────────────────────────────
+create table payments (
+  id              uuid default uuid_generate_v4() primary key,
+  booking_id      uuid references bookings(id) on delete restrict not null,
+  razorpay_order_id   text,
+  razorpay_payment_id text,
+  amount          int not null,
+  currency        text default 'INR',
+  status          text default 'pending' check (status in ('pending','captured','failed','refunded')),
+  created_at      timestamptz default now()
+);
+
+-- ============================================================
+-- Row Level Security (RLS)
+-- ============================================================
+
+alter table profiles  enable row level security;
+alter table venues    enable row level security;
+alter table bookings  enable row level security;
+alter table reviews   enable row level security;
+alter table wishlists enable row level security;
+alter table messages  enable row level security;
+alter table payments  enable row level security;
+
+-- profiles: users can read all, update own
+create policy "profiles_select_all"  on profiles for select using (true);
+create policy "profiles_update_own"  on profiles for update using (auth.uid() = id);
+
+-- venues: anyone can read active venues; hosts manage own
+create policy "venues_select_active" on venues for select using (is_active = true);
+create policy "venues_insert_host"   on venues for insert with check (auth.uid() = host_id);
+create policy "venues_update_host"   on venues for update using (auth.uid() = host_id);
+create policy "venues_delete_host"   on venues for delete using (auth.uid() = host_id);
+
+-- bookings: guests see own; hosts see bookings for their venues
+create policy "bookings_guest_select" on bookings for select using (auth.uid() = guest_id);
+create policy "bookings_host_select"  on bookings for select using (
+  auth.uid() in (select host_id from venues where id = venue_id)
+);
+create policy "bookings_insert"       on bookings for insert with check (auth.uid() = guest_id);
+create policy "bookings_update_guest" on bookings for update using (auth.uid() = guest_id);
+create policy "bookings_update_host"  on bookings for update using (
+  auth.uid() in (select host_id from venues where id = venue_id)
+);
+
+-- reviews: public read; reviewer can write
+create policy "reviews_select_all"   on reviews for select using (true);
+create policy "reviews_insert_own"   on reviews for insert with check (auth.uid() = reviewer_id);
+create policy "reviews_update_own"   on reviews for update using (auth.uid() = reviewer_id);
+
+-- wishlists: users manage own
+create policy "wishlists_own" on wishlists for all using (auth.uid() = user_id);
+
+-- messages: sender or receiver can see
+create policy "messages_select" on messages for select using (
+  auth.uid() = sender_id or auth.uid() = receiver_id
+);
+create policy "messages_insert" on messages for insert with check (auth.uid() = sender_id);
+
+-- payments: guest or host of venue can see
+create policy "payments_select" on payments for select using (
+  auth.uid() in (
+    select guest_id from bookings where id = booking_id
+    union
+    select host_id from venues v join bookings b on b.venue_id = v.id where b.id = booking_id
+  )
+);
+
+-- ============================================================
+-- Storage Buckets (run after enabling Storage in dashboard)
+-- ============================================================
+-- insert into storage.buckets (id, name, public) values ('venue-photos', 'venue-photos', true);
+-- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+
+-- ============================================================
+-- Seed Data — sample venues for development
+-- ============================================================
+
+-- NOTE: Replace 'YOUR-HOST-UUID' with a real profile UUID after
+-- signing up your first host account, then run the inserts below.
+
+-- insert into venues (host_id, name, description, venue_type, city, address, capacity, price_per_hour, min_hours, cleaning_fee, security_deposit, amenities, occasions, cover_emoji, badge_label, is_active, is_instant_book) values
+-- (
+--   'YOUR-HOST-UUID',
+--   'Skyline Rooftop Lounge',
+--   'Mumbai''s most sought-after private party rooftop. Panoramic views of the Bandra-Worli Sea Link, premium JBL sound, LED lighting, and a dedicated host.',
+--   'Rooftop',
+--   'Bandra, Mumbai',
+--   '18th Floor, Link Square Mall, Bandra West, Mumbai 400050',
+--   50, 12000, 4, 3500, 25000,
+--   ARRAY['DJ/Sound System','LED Lighting','Bar Setup','Catering Available','Basic Décor','Photo Booth','Valet Parking','WiFi'],
+--   ARRAY['Couple','Family','Group','Birthday','Anniversary','Corporate'],
+--   '🌃', '🌃 Rooftop', true, true
+-- );
