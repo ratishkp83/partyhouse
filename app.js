@@ -68,16 +68,18 @@ function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
-  document.getElementById('catBar').style.display =
-    (id === 'home' || id === 'search') ? '' : 'none';
-  document.getElementById('userDropdown').classList.remove('open');
+  const catBar = document.getElementById('catBar');
+  if (catBar) catBar.style.display = (id === 'home' || id === 'search') ? '' : 'none';
+  const dd = document.getElementById('userDropdown');
+  if (dd) dd.classList.remove('open');
 
   // Trigger data loads per page
-  if (id === 'home')      loadHome();
-  if (id === 'search')    loadSearch();
-  if (id === 'trips')     loadMyBookings();
-  if (id === 'wishlist')  loadWishlist();
-  if (id === 'dashboard') loadDashboard();
+  if (id === 'home')         loadHome();
+  if (id === 'search')       loadSearch();
+  if (id === 'trips')        loadMyBookings();
+  if (id === 'wishlist')     loadWishlist();
+  if (id === 'dashboard')    loadDashboard();
+  if (id === 'new-listing')  startNewListing();
 }
 
 // ── Dropdown ──────────────────────────────────────────────────
@@ -120,8 +122,8 @@ function updatePrice(v) {
     'Up to ₹' + Number(v).toLocaleString('en-IN');
 }
 
-function toggleSw(id) {
-  document.getElementById(id).classList.toggle('on');
+function toggleFilterSw(id) {
+  document.getElementById(id)?.classList.toggle('on');
 }
 
 function applyFilters() {
@@ -413,6 +415,62 @@ async function loadDashboard() {
 
 // ── New Listing Wizard ────────────────────────────────────────
 // ── Listing Wizard ───────────────────────────────────────────
+function startNewListing() {
+  // Reset all wizard state
+  wizStep = 1;
+  wizVals.wg = 30;
+  wizVals.wh = 4;
+  wizPhotos  = [];
+  wizData.venue_type       = 'Rooftop / Terrace';
+  wizData.capacity         = 30;
+  wizData.min_hours        = 4;
+  wizData.amenities        = ['DJ / Sound', 'Party Lights'];
+  wizData.occasions        = ['Couple', 'Family', 'Birthday'];
+  wizData.price_per_hour   = 5000;
+  wizData.weekend_rate     = null;
+  wizData.cleaning_fee     = 2500;
+  wizData.security_deposit = 10000;
+  wizData.rules            = { alcohol: false, catering: true, smoking: false, pets: false, adults_only: false, instant_book: false };
+
+  // Reset DOM: hide all steps, show step 1
+  for (let i = 1; i <= 9; i++) {
+    const el = document.getElementById('wizStep' + i);
+    if (el) el.style.display = (i === 1) ? 'block' : 'none';
+  }
+  const bar = document.getElementById('wizBar');
+  if (bar) bar.style.width = '12.5%';
+  const counter = document.getElementById('wizCounter');
+  if (counter) counter.textContent = 'Step 1 of 8';
+
+  // Reset type card selection
+  document.querySelectorAll('.type-card').forEach((c, i) => {
+    c.classList.toggle('sel', i === 0);
+  });
+
+  // Reset amenities
+  document.querySelectorAll('.am-check').forEach(c => {
+    const label = c.querySelector('span')?.textContent?.trim();
+    c.classList.toggle('sel', ['DJ / Sound', 'Party Lights'].includes(label));
+  });
+
+  // Reset toggles
+  ['sw-alcohol','sw-smoking','sw-pets','sw-adults','sw-instant'].forEach(id => {
+    document.getElementById(id)?.classList.remove('on');
+  });
+  document.getElementById('sw-catering')?.classList.add('on');
+
+  // Clear photo previews
+  const photoGrid = document.getElementById('photoPreviewGrid');
+  if (photoGrid) photoGrid.innerHTML = '';
+
+  // Reset stepper displays
+  const wgEl = document.getElementById('wg-val');
+  const whEl = document.getElementById('wh-val');
+  if (wgEl) wgEl.textContent = 30;
+  if (whEl) whEl.textContent = 4;
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 let wizStep = 1;
 const wizVals = { wg: 30, wh: 4 };
 let wizPhotos  = []; // array of File objects
