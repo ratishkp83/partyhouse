@@ -55,7 +55,7 @@
     </div>
 
     <div class="nav-right">
-      <div class="nav-link" onclick="goPage('host')" data-tip="List your venue for parties">List Your Venue</div>
+      <div class="nav-link" onclick="goPage('new-listing')" data-tip="List your venue for parties">List Your Venue</div>
       <div class="nav-icon" data-tip="Change language or currency">🌐</div>
       <!-- Shown when logged out -->
       <div id="navAuthButtons" style="display:flex;align-items:center;gap:8px">
@@ -335,11 +335,11 @@
           <div class="filter-group">
             <div class="filter-toggle">
               <div style="font-size:13px;font-weight:500" data-tip="Book instantly without host approval">⚡ Instant Book</div>
-              <div class="toggle-sw" id="tog-instant" onclick="toggleSw('tog-instant')"></div>
+              <div class="toggle-sw" id="tog-instant" onclick="toggleFilterSw('tog-instant')"></div>
             </div>
             <div class="filter-toggle" style="margin-top:12px">
               <div style="font-size:13px;font-weight:500" data-tip="Only show top-rated hosts">⭐ Top Hosts only</div>
-              <div class="toggle-sw on" id="tog-top" onclick="toggleSw('tog-top')"></div>
+              <div class="toggle-sw on" id="tog-top" onclick="toggleFilterSw('tog-top')"></div>
             </div>
           </div>
 
