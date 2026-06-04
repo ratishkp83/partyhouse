@@ -573,6 +573,13 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
 .submit-btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:12px;border-radius:var(--r-pill);font-weight:700;font-size:14px;transition:opacity .2s;margin-top:4px}
 .submit-btn:hover{opacity:.9}
 
+/* hide number spinners inside search bars */
+.search-seg input[type=number]::-webkit-inner-spin-button,
+.search-seg input[type=number]::-webkit-outer-spin-button,
+.hs-seg input[type=number]::-webkit-inner-spin-button,
+.hs-seg input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.search-seg input[type=number],.hs-seg input[type=number]{-moz-appearance:textfield}
+
 /* ── Scrollbar ───────────────────────────── */
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:var(--bg)}
