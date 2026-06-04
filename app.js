@@ -17,7 +17,7 @@ const INDIA_CITIES = [
 ];
 
 function initCityAutocomplete() {
-  ['cityListNav','cityListHero'].forEach(id => {
+  ['cityListNav','cityListHero','wizCityList'].forEach(id => {
     const dl = document.getElementById(id);
     if (!dl) return;
     INDIA_CITIES.forEach(city => {
@@ -412,40 +412,47 @@ async function loadDashboard() {
 }
 
 // ── New Listing Wizard ────────────────────────────────────────
+// ── Listing Wizard ───────────────────────────────────────────
 let wizStep = 1;
-const wizVals  = { wg: 30, wh: 4 };
-const wizData  = {
-  venue_type: 'Rooftop',
-  capacity:   30,
-  min_hours:  4,
-  amenities:  ['DJ/Sound System','Party Lights'],
-  occasions:  ['Couple','Family','Group','Birthday'],
+const wizVals = { wg: 30, wh: 4 };
+let wizPhotos  = []; // array of File objects
+
+const wizData = {
+  venue_type:       'Rooftop / Terrace',
+  capacity:         30,
+  min_hours:        4,
+  amenities:        ['DJ / Sound', 'Party Lights'],
+  occasions:        ['Couple', 'Family', 'Birthday'],
   price_per_hour:   5000,
+  weekend_rate:     null,
   cleaning_fee:     2500,
   security_deposit: 10000,
+  rules: { alcohol: false, catering: true, smoking: false, pets: false, adults_only: false, instant_book: false },
 };
 
 function wizNext(n) {
   document.getElementById('wizStep' + wizStep).style.display = 'none';
   wizStep = n;
+  const total = 8;
   document.getElementById('wizStep' + n).style.display = 'block';
-  document.getElementById('wizBar').style.width = (n / 5 * 100) + '%';
-  window.scrollTo(0, 0);
+  document.getElementById('wizBar').style.width = (n / total * 100) + '%';
+  document.getElementById('wizCounter').textContent = 'Step ' + n + ' of ' + total;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function adjWiz(k, d) {
-  const mins  = { wg: 2, wh: 1 };
+  const mins  = { wg: 5, wh: 1 };
   const steps = { wg: 5, wh: 1 };
-  wizVals[k]  = Math.max(mins[k]||1, wizVals[k] + d * (steps[k]||1));
+  wizVals[k]  = Math.max(mins[k] || 1, wizVals[k] + d * (steps[k] || 1));
   document.getElementById(k + '-val').textContent = wizVals[k];
   if (k === 'wg') wizData.capacity  = wizVals[k];
   if (k === 'wh') wizData.min_hours = wizVals[k];
 }
 
-function selType(el) {
+function selType(el, type) {
   document.querySelectorAll('.type-card').forEach(c => c.classList.remove('sel'));
   el.classList.add('sel');
-  wizData.venue_type = el.querySelector('h4').textContent.trim();
+  wizData.venue_type = type;
 }
 
 function toggleAm(el) {
@@ -458,32 +465,181 @@ function toggleAm(el) {
   }
 }
 
-async function publishVenue() {
-  if (!Auth.requireAuth('list a venue')) return;
+function toggleSw(id) {
+  const el  = document.getElementById(id);
+  const key = id.replace('sw-', '').replace('-', '_');
+  el.classList.toggle('on');
+  if (wizData.rules) wizData.rules[key] = el.classList.contains('on');
+}
 
-  // Read name/desc from the wizard form if present
-  const nameEl = document.getElementById('wizVenueName');
-  const descEl = document.getElementById('wizVenueDesc');
-  const cityEl = document.getElementById('wizCity');
-  const priceEl = document.getElementById('wizPrice');
+// ── Step validations ─────────────────────────────────────────
+function wizValidateStep2() {
+  const name    = document.getElementById('wizVenueName')?.value?.trim();
+  const city    = document.getElementById('wizCity')?.value?.trim();
+  const area    = document.getElementById('wizArea')?.value?.trim();
+  const address = document.getElementById('wizAddress')?.value?.trim();
+  const pin     = document.getElementById('wizPin')?.value?.trim();
+  const state   = document.getElementById('wizState')?.value;
+  if (!name)    { showToast('Please enter a venue name', 'error'); return; }
+  if (!city)    { showToast('Please enter the city', 'error'); return; }
+  if (!area)    { showToast('Please enter the neighbourhood / area', 'error'); return; }
+  if (!address) { showToast('Please enter the full address', 'error'); return; }
+  if (!pin || pin.length !== 6 || isNaN(pin)) { showToast('Please enter a valid 6-digit PIN code', 'error'); return; }
+  if (!state)   { showToast('Please select a state', 'error'); return; }
+  wizNext(3);
+}
+
+function wizValidateStep3() {
+  const desc = document.getElementById('wizDesc')?.value?.trim();
+  if (!desc || desc.length < 80) {
+    showToast('Please write at least 80 characters describing your venue', 'error');
+    return;
+  }
+  wizNext(4);
+}
+
+function wizValidateStep6() {
+  if (wizPhotos.length < 3) {
+    showToast('Please upload at least 3 photos of your venue', 'error');
+    return;
+  }
+  wizNext(7);
+}
+
+function wizValidateStep7() {
+  const price = parseInt(document.getElementById('wizPrice')?.value);
+  if (!price || price < 500) {
+    showToast('Please set a valid hourly rate (minimum ₹500)', 'error');
+    return;
+  }
+  wizData.price_per_hour   = price;
+  wizData.weekend_rate     = parseInt(document.getElementById('wizWeekendPrice')?.value) || null;
+  wizData.cleaning_fee     = parseInt(document.getElementById('wizCleaning')?.value) || 0;
+  wizData.security_deposit = parseInt(document.getElementById('wizDeposit')?.value) || 0;
+  wizNext(8);
+}
+
+// ── Photo handling ────────────────────────────────────────────
+function handlePhotoUpload(input) {
+  const files = Array.from(input.files);
+  if (wizPhotos.length + files.length > 15) {
+    showToast('Maximum 15 photos allowed', 'error');
+    return;
+  }
+  files.forEach(f => {
+    if (f.size > 10 * 1024 * 1024) { showToast(f.name + ' exceeds 10 MB', 'error'); return; }
+    wizPhotos.push(f);
+    const reader = new FileReader();
+    reader.onload = e => renderPhotoPreview(e.target.result, wizPhotos.length - 1);
+    reader.readAsDataURL(f);
+  });
+  input.value = '';
+}
+
+function renderPhotoPreview(src, idx) {
+  const grid = document.getElementById('photoPreviewGrid');
+  const div  = document.createElement('div');
+  div.className = 'photo-preview-item';
+  div.dataset.idx = idx;
+  div.innerHTML = `<img src="${src}" alt="venue photo">
+    <div class="photo-remove" onclick="removePhoto(${idx})">✕</div>`;
+  grid.appendChild(div);
+}
+
+function removePhoto(idx) {
+  wizPhotos.splice(idx, 1);
+  const grid  = document.getElementById('photoPreviewGrid');
+  const items = grid.querySelectorAll('.photo-preview-item');
+  items[idx]?.remove();
+  // re-index remaining remove buttons
+  grid.querySelectorAll('.photo-preview-item').forEach((el, i) => {
+    el.dataset.idx = i;
+    el.querySelector('.photo-remove').setAttribute('onclick', `removePhoto(${i})`);
+  });
+}
+
+// ── Earnings preview (live update on price input) ─────────────
+document.addEventListener('input', e => {
+  if (e.target.id === 'wizPrice') updateEarningsPreview(parseInt(e.target.value) || 0);
+});
+
+function updateEarningsPreview(rate) {
+  const hours   = wizData.min_hours || 4;
+  const total   = rate * hours;
+  const fee     = Math.round(total * 0.05);
+  const net     = total - fee;
+  const fmt     = n => n.toLocaleString('en-IN');
+  const el      = id => document.getElementById(id);
+  if (el('prevRate'))  el('prevRate').textContent  = fmt(rate);
+  if (el('prevTotal')) el('prevTotal').textContent = fmt(total);
+  if (el('prevFee'))   el('prevFee').textContent   = fmt(fee);
+  if (el('prevNet'))   el('prevNet').textContent   = fmt(net);
+}
+
+// ── Submit for review ─────────────────────────────────────────
+async function submitListingForReview() {
+  if (!Auth.requireAuth('submit a listing')) return;
+
+  const hostName  = document.getElementById('wizHostName')?.value?.trim();
+  const hostPhone = document.getElementById('wizHostPhone')?.value?.trim();
+  const hostEmail = document.getElementById('wizHostEmail')?.value?.trim();
+  const exp       = document.getElementById('wizExperience')?.value;
+
+  if (!hostName)  { showToast('Please enter your full name', 'error'); return; }
+  if (!hostPhone) { showToast('Please enter your mobile number', 'error'); return; }
+  if (!hostEmail) { showToast('Please enter your email address', 'error'); return; }
+  if (!exp)       { showToast('Please select your hosting experience', 'error'); return; }
+
+  const btn = document.getElementById('wizSubmitBtn');
+  btn.textContent = 'Submitting…';
+  btn.disabled    = true;
+
+  // Collect occasions from checked boxes
+  wizData.occasions = Array.from(
+    document.querySelectorAll('.occ-check input:checked')
+  ).map(cb => cb.value);
 
   const payload = {
     ...wizData,
-    name:          nameEl?.value?.trim() || 'My Party Venue',
-    description:   descEl?.value?.trim() || '',
-    city:          cityEl?.value?.trim() || 'Mumbai',
-    price_per_hour: parseInt(priceEl?.value || wizData.price_per_hour),
+    name:          document.getElementById('wizVenueName')?.value?.trim(),
+    description:   document.getElementById('wizDesc')?.value?.trim(),
+    city:          document.getElementById('wizCity')?.value?.trim(),
+    address:       [
+      document.getElementById('wizArea')?.value?.trim(),
+      document.getElementById('wizAddress')?.value?.trim(),
+      document.getElementById('wizPin')?.value?.trim(),
+      document.getElementById('wizState')?.value,
+    ].filter(Boolean).join(', '),
     cover_emoji:   document.querySelector('.type-card.sel .tc-icon')?.textContent || '🎉',
-    badge_label:   document.querySelector('.type-card.sel .tc-icon')?.textContent + ' ' + wizData.venue_type,
-    is_active:     true,
+    badge_label:   (document.querySelector('.type-card.sel .tc-icon')?.textContent || '') + ' ' + wizData.venue_type,
+    is_active:     false,        // Stays off until admin approves
+    is_instant_book: wizData.rules?.instant_book || false,
+    host_notes:    [
+      `Host: ${hostName} | Phone: ${hostPhone} | Email: ${hostEmail}`,
+      `Experience: ${exp}`,
+      `Rules: alcohol=${wizData.rules?.alcohol}, catering=${wizData.rules?.catering}, smoking=${wizData.rules?.smoking}, pets=${wizData.rules?.pets}, adults_only=${wizData.rules?.adults_only}`,
+      `Noise cutoff: ${document.getElementById('wizCutoff')?.value || 'none'}`,
+      `Parking: ${document.getElementById('wizParking')?.value || 'not specified'} spots`,
+      `GST: ${document.getElementById('wizGST')?.value?.trim() || 'not provided'}`,
+      document.getElementById('wizHostNotes')?.value?.trim() || '',
+    ].filter(Boolean).join('\n'),
   };
 
   const venue = await Venues.create(payload);
+
+  btn.textContent = 'Submit for Review 🎉';
+  btn.disabled    = false;
+
   if (venue) {
-    goPage('dashboard');
-    loadDashboard();
+    const refCode = 'PH-' + venue.city?.toUpperCase().slice(0,3) + '-' + Date.now().toString(36).toUpperCase().slice(-6);
+    // Show success step
+    document.getElementById('wizStep8').style.display = 'none';
+    document.getElementById('wizStep9').style.display = 'block';
+    document.getElementById('wizConfirmCode').textContent = refCode;
+    document.getElementById('wizBar').style.width = '100%';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
-// ── Misc helpers (retained from original) ────────────────────
-function toggleHeart(btn) { btn.classList.toggle('saved'); }  // fallback if no auth
+// ── Misc helpers ──────────────────────────────────────────────
+function toggleHeart(btn) { btn.classList.toggle('saved'); }
