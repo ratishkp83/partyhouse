@@ -667,87 +667,385 @@
   </div>
 
   <!-- ===== NEW LISTING WIZARD ===== -->
+  <!-- ===== LIST YOUR VENUE WIZARD ===== -->
   <div class="page" id="page-new-listing">
     <div class="wizard-page">
-      <div class="wizard-progress"><div class="wizard-bar" id="wizBar" style="width:20%"></div></div>
+
+      <!-- Progress bar -->
+      <div class="wizard-progress"><div class="wizard-bar" id="wizBar" style="width:12.5%"></div></div>
+      <div class="wizard-step-counter" id="wizCounter">Step 1 of 8</div>
+
+      <!-- ── Step 1: Venue Type ── -->
       <div id="wizStep1">
         <div class="wizard-step-title">What type of venue is it?</div>
         <div class="wizard-step-sub">Choose the category that best describes your party space</div>
         <div class="type-grid">
-          <div class="type-card sel" onclick="selType(this)" data-tip="Rooftop or terrace space"><div class="tc-icon">🌃</div><h4>Rooftop / Terrace</h4></div>
-          <div class="type-card" onclick="selType(this)" data-tip="Villa or bungalow"><div class="tc-icon">🏡</div><h4>Villa / Bungalow</h4></div>
-          <div class="type-card" onclick="selType(this)" data-tip="Private hall or banquet"><div class="tc-icon">🎪</div><h4>Private Hall</h4></div>
-          <div class="type-card" onclick="selType(this)" data-tip="Garden or outdoor space"><div class="tc-icon">🌳</div><h4>Garden / Lawn</h4></div>
-          <div class="type-card" onclick="selType(this)" data-tip="Pool or poolside party space"><div class="tc-icon">🏊</div><h4>Pool Space</h4></div>
-          <div class="type-card" onclick="selType(this)" data-tip="Unique or specialty venue"><div class="tc-icon">✨</div><h4>Unique Venue</h4></div>
+          <div class="type-card sel" onclick="selType(this,'Rooftop / Terrace')"><div class="tc-icon">🌃</div><h4>Rooftop / Terrace</h4></div>
+          <div class="type-card" onclick="selType(this,'Villa / Bungalow')"><div class="tc-icon">🏡</div><h4>Villa / Bungalow</h4></div>
+          <div class="type-card" onclick="selType(this,'Private Hall')"><div class="tc-icon">🎪</div><h4>Private Hall</h4></div>
+          <div class="type-card" onclick="selType(this,'Garden / Lawn')"><div class="tc-icon">🌳</div><h4>Garden / Lawn</h4></div>
+          <div class="type-card" onclick="selType(this,'Pool Space')"><div class="tc-icon">🏊</div><h4>Pool Space</h4></div>
+          <div class="type-card" onclick="selType(this,'Farmhouse')"><div class="tc-icon">🌾</div><h4>Farmhouse</h4></div>
+          <div class="type-card" onclick="selType(this,'Penthouse')"><div class="tc-icon">🏙️</div><h4>Penthouse</h4></div>
+          <div class="type-card" onclick="selType(this,'Unique Venue')"><div class="tc-icon">✨</div><h4>Unique Venue</h4></div>
         </div>
         <div class="wizard-footer">
-          <button class="back-btn" onclick="goPage('dashboard')">← Back</button>
+          <button class="back-btn" onclick="goPage('home')">← Cancel</button>
           <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(2)">Next →</button>
         </div>
       </div>
+
+      <!-- ── Step 2: Location ── -->
       <div id="wizStep2" style="display:none">
-        <div class="wizard-step-title">Capacity & occasion types</div>
-        <div class="wizard-step-sub">Tell guests who and how many your venue can host</div>
-        <div style="margin-bottom:24px">
-          <div class="pricing-row"><div><label>Maximum Guests</label><small>Total capacity of your venue</small></div><div class="filter-steps"><button class="step-btn" onclick="adjWiz('wg',-5)">−</button><span id="wg-val" style="min-width:32px;text-align:center;font-weight:600">30</span><button class="step-btn" onclick="adjWiz('wg',5)">+</button></div></div>
-          <div class="pricing-row" style="border-bottom:none"><div><label>Minimum booking hours</label><small>Shortest event you'll host</small></div><div class="filter-steps"><button class="step-btn" onclick="adjWiz('wh',-1)">−</button><span id="wh-val" style="min-width:32px;text-align:center;font-weight:600">4</span><button class="step-btn" onclick="adjWiz('wh',1)">+</button></div></div>
+        <div class="wizard-step-title">Where is your venue?</div>
+        <div class="wizard-step-sub">Exact address is shared with guests only after booking is confirmed</div>
+        <div class="form-group">
+          <label class="wiz-label">Venue Name *</label>
+          <input class="form-input" type="text" id="wizVenueName" placeholder="e.g. The Skyline Rooftop Lounge">
         </div>
-        <div style="margin-bottom:24px">
-          <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);display:block;margin-bottom:12px">Occasions you welcome</label>
-          <div class="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <label class="filter-check"><input type="checkbox" checked> 💑 Couple events</label>
-            <label class="filter-check"><input type="checkbox" checked> 👨‍👩‍👧‍👦 Family parties</label>
-            <label class="filter-check"><input type="checkbox" checked> 🎉 Group parties</label>
-            <label class="filter-check"><input type="checkbox" checked> 🎂 Birthdays</label>
-            <label class="filter-check"><input type="checkbox"> 💍 Anniversaries</label>
-            <label class="filter-check"><input type="checkbox"> 🎪 Corporate events</label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="wiz-label">City *</label>
+            <input class="form-input" type="text" id="wizCity" placeholder="Mumbai" autocomplete="off" list="wizCityList">
+            <datalist id="wizCityList"></datalist>
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Area / Neighbourhood *</label>
+            <input class="form-input" type="text" id="wizArea" placeholder="e.g. Bandra West">
           </div>
         </div>
-        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(1)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(3)">Next →</button></div>
+        <div class="form-group">
+          <label class="wiz-label">Full Address *</label>
+          <input class="form-input" type="text" id="wizAddress" placeholder="Building, street, landmark...">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="wiz-label">PIN Code *</label>
+            <input class="form-input" type="text" id="wizPin" placeholder="400050" maxlength="6">
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">State *</label>
+            <select class="form-input" id="wizState">
+              <option value="">Select state</option>
+              <option>Andhra Pradesh</option><option>Assam</option><option>Bihar</option>
+              <option>Chhattisgarh</option><option>Delhi</option><option>Goa</option>
+              <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option>
+              <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option>
+              <option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+              <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option>
+              <option>Odisha</option><option>Punjab</option><option>Rajasthan</option>
+              <option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option>
+              <option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option>
+              <option>West Bengal</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="wiz-label">Google Maps link <span style="font-weight:400;color:var(--muted)">(optional but recommended)</span></label>
+          <input class="form-input" type="url" id="wizMapsLink" placeholder="https://maps.google.com/...">
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(1)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizValidateStep2()">Next →</button>
+        </div>
       </div>
+
+      <!-- ── Step 3: Space Details ── -->
       <div id="wizStep3" style="display:none">
-        <div class="wizard-step-title">What does your venue offer?</div>
-        <div class="wizard-step-sub">Select all amenities and features available at your party space</div>
-        <div class="amenity-check-grid">
-          <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">🎵</div><span>DJ / Sound</span></div>
-          <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">💡</div><span>Party Lights</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍾</div><span>Bar Setup</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍽</div><span>Catering</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎊</div><span>Décor</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🏊</div><span>Pool</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🅿</div><span>Parking</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📷</div><span>Photo Booth</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎮</div><span>Games Area</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔥</div><span>BBQ Grill</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎤</div><span>Karaoke</span></div>
-          <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍿</div><span>Projector</span></div>
+        <div class="wizard-step-title">Tell us about your space</div>
+        <div class="wizard-step-sub">Help guests understand what makes your venue special</div>
+        <div class="form-group">
+          <label class="wiz-label">Venue description *</label>
+          <textarea class="form-input" id="wizDesc" rows="5" placeholder="Describe your venue — the vibe, standout features, what's included, what makes it perfect for parties..." style="resize:vertical;line-height:1.6"></textarea>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Minimum 80 characters. Be specific — better descriptions get more bookings.</div>
         </div>
-        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(2)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(4)">Next →</button></div>
-      </div>
-      <div id="wizStep4" style="display:none">
-        <div class="wizard-step-title">Set your pricing</div>
-        <div class="wizard-step-sub">PartyHouse takes a 5% host fee. You keep the rest.</div>
-        <div style="margin-bottom:24px">
-          <div class="pricing-row"><div><label>Base hourly rate</label><small>Standard weekday pricing</small></div><input class="price-input" type="number" value="5000" placeholder="₹"></div>
-          <div class="pricing-row"><div><label>Weekend rate</label><small>Fri evening – Sun</small></div><input class="price-input" type="number" value="8000" placeholder="₹"></div>
-          <div class="pricing-row"><div><label>Cleaning & setup fee</label><small>One-time per booking</small></div><input class="price-input" type="number" value="2500" placeholder="₹"></div>
-          <div class="pricing-row" style="border-bottom:none"><div><label>Security deposit</label><small>Refundable after event</small></div><input class="price-input" type="number" value="10000" placeholder="₹"></div>
-        </div>
-        <div class="wizard-footer"><button class="back-btn" onclick="wizNext(3)">← Back</button><button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(5)">Next →</button></div>
-      </div>
-      <div id="wizStep5" style="display:none">
-        <div style="text-align:center;padding:40px 0">
-          <div style="font-size:64px;margin-bottom:24px">🚀</div>
-          <div class="wizard-step-title" style="text-align:center">Ready to go live!</div>
-          <p style="color:var(--muted);font-size:15px;margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto">Your party venue is configured. Once published, partygoers can discover and book it instantly.</p>
-          <div style="background:#fff8f0;border-radius:var(--r-lg);padding:20px;margin-bottom:28px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">
-            <div style="font-size:13px;line-height:2;color:var(--muted)">✅ Venue type selected<br>✅ Capacity & occasions set<br>✅ Amenities listed<br>✅ Pricing configured</div>
+        <div class="form-row" style="margin-top:8px">
+          <div class="form-group">
+            <label class="wiz-label">Indoor area (sq. ft) <span style="font-weight:400;color:var(--muted)">optional</span></label>
+            <input class="form-input" type="number" id="wizAreaSqft" placeholder="e.g. 2500" min="50">
           </div>
-          <button style="background:var(--accent);color:#fff;padding:14px 40px;border-radius:var(--r-pill);font-weight:600;font-size:16px;cursor:pointer;margin-right:10px" onclick="goPage('dashboard')">🎉 Publish Venue</button>
-          <button style="border:1.5px solid var(--border);padding:13px 24px;border-radius:var(--r-pill);font-size:14px;cursor:pointer;background:var(--surface)" data-tip="Save as draft to edit later">Save as Draft</button>
+          <div class="form-group">
+            <label class="wiz-label">Outdoor / open area (sq. ft) <span style="font-weight:400;color:var(--muted)">optional</span></label>
+            <input class="form-input" type="number" id="wizOutdoorSqft" placeholder="e.g. 1200" min="0">
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="pricing-row">
+            <div><label>Maximum guest capacity *</label><small>Total number of guests your venue can safely host</small></div>
+            <div class="filter-steps">
+              <button class="step-btn" onclick="adjWiz('wg',-5)">−</button>
+              <span id="wg-val" style="min-width:40px;text-align:center;font-weight:700;font-size:16px">30</span>
+              <button class="step-btn" onclick="adjWiz('wg',5)">+</button>
+            </div>
+          </div>
+          <div class="pricing-row" style="border-bottom:none">
+            <div><label>Minimum booking hours *</label><small>Shortest event duration you'll accept</small></div>
+            <div class="filter-steps">
+              <button class="step-btn" onclick="adjWiz('wh',-1)">−</button>
+              <span id="wh-val" style="min-width:40px;text-align:center;font-weight:700;font-size:16px">4</span>
+              <button class="step-btn" onclick="adjWiz('wh',1)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(2)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizValidateStep3()">Next →</button>
         </div>
       </div>
+
+      <!-- ── Step 4: Occasions & Rules ── -->
+      <div id="wizStep4" style="display:none">
+        <div class="wizard-step-title">Occasions & house rules</div>
+        <div class="wizard-step-sub">Tell guests what kind of events you host and what rules apply</div>
+        <div style="margin-bottom:28px">
+          <label class="wiz-label" style="display:block;margin-bottom:12px">Occasions you welcome *</label>
+          <div class="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label class="filter-check occ-check"><input type="checkbox" value="Couple" checked> 💑 Couple / Romantic</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Family" checked> 👨‍👩‍👧‍👦 Family parties</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Birthday" checked> 🎂 Birthdays</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Group"> 🎉 Group events</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Anniversary"> 💍 Anniversaries</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Corporate"> 🎪 Corporate events</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Pool Party"> 🏊 Pool parties</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Night Out"> 🍾 Night out / Club style</label>
+          </div>
+        </div>
+        <div style="margin-bottom:24px">
+          <label class="wiz-label" style="display:block;margin-bottom:12px">House rules</label>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">Alcohol allowed</div><div style="font-size:12px;color:var(--muted)">Guests can bring or consume alcohol</div></div>
+              <div class="toggle-sw" id="sw-alcohol" onclick="toggleSw('sw-alcohol')"></div>
+            </div>
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">Outside catering allowed</div><div style="font-size:12px;color:var(--muted)">Guests can bring their own food/catering</div></div>
+              <div class="toggle-sw on" id="sw-catering" onclick="toggleSw('sw-catering')"></div>
+            </div>
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">Smoking allowed</div><div style="font-size:12px;color:var(--muted)">In designated areas or outdoors</div></div>
+              <div class="toggle-sw" id="sw-smoking" onclick="toggleSw('sw-smoking')"></div>
+            </div>
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">Pets allowed</div><div style="font-size:12px;color:var(--muted)">Guests may bring well-behaved pets</div></div>
+              <div class="toggle-sw" id="sw-pets" onclick="toggleSw('sw-pets')"></div>
+            </div>
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">18+ only events</div><div style="font-size:12px;color:var(--muted)">Venue is restricted to adult guests</div></div>
+              <div class="toggle-sw" id="sw-adults" onclick="toggleSw('sw-adults')"></div>
+            </div>
+            <div class="filter-toggle">
+              <div><div style="font-size:14px;font-weight:500">Instant booking</div><div style="font-size:12px;color:var(--muted)">Guests can book without host approval</div></div>
+              <div class="toggle-sw" id="sw-instant" onclick="toggleSw('sw-instant')"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="wiz-label">Noise / music cut-off time</label>
+            <select class="form-input" id="wizCutoff">
+              <option value="">No restriction</option>
+              <option>10:00 PM</option><option>11:00 PM</option>
+              <option>12:00 AM (midnight)</option><option>1:00 AM</option><option>2:00 AM</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Parking spots available</label>
+            <input class="form-input" type="number" id="wizParking" placeholder="e.g. 10" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="wiz-label">Additional rules / notes <span style="font-weight:400;color:var(--muted)">optional</span></label>
+          <textarea class="form-input" id="wizRules" rows="3" placeholder="Any other rules guests should know before booking..." style="resize:vertical"></textarea>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(3)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(5)">Next →</button>
+        </div>
+      </div>
+
+      <!-- ── Step 5: Amenities ── -->
+      <div id="wizStep5" style="display:none">
+        <div class="wizard-step-title">What does your venue offer?</div>
+        <div class="wizard-step-sub">Select everything available at your party space. More amenities = more bookings.</div>
+        <div style="margin-bottom:20px">
+          <div class="wiz-label" style="margin-bottom:10px">Sound & Entertainment</div>
+          <div class="amenity-check-grid">
+            <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">🎵</div><span>DJ / Sound</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎤</div><span>Karaoke</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍿</div><span>Projector / Screen</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎮</div><span>Games Area</span></div>
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <div class="wiz-label" style="margin-bottom:10px">Lighting & Décor</div>
+          <div class="amenity-check-grid">
+            <div class="am-check sel" onclick="toggleAm(this)"><div class="am-icon">💡</div><span>Party Lights</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎊</div><span>Basic Décor</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📷</div><span>Photo Booth</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🕯️</div><span>Ambience / LED</span></div>
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <div class="wiz-label" style="margin-bottom:10px">Food & Drink</div>
+          <div class="amenity-check-grid">
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍾</div><span>Bar Setup</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍽</div><span>Catering</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔥</div><span>BBQ / Grill</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">☕</div><span>Pantry / Kitchen</span></div>
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <div class="wiz-label" style="margin-bottom:10px">Facilities</div>
+          <div class="amenity-check-grid">
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🏊</div><span>Pool</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🅿</div><span>Parking</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📶</div><span>High-speed WiFi</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">❄️</div><span>AC / Climate ctrl</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">♿</div><span>Wheelchair access</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔒</div><span>Private / Gated</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🛁</div><span>Changing rooms</span></div>
+            <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🌿</div><span>Garden / Lawn</span></div>
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(4)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizNext(6)">Next →</button>
+        </div>
+      </div>
+
+      <!-- ── Step 6: Photos ── -->
+      <div id="wizStep6" style="display:none">
+        <div class="wizard-step-title">Add photos of your venue</div>
+        <div class="wizard-step-sub">Listings with 5+ photos get 3× more bookings. Upload your best shots.</div>
+        <div class="photo-upload-area" id="photoDropzone" onclick="document.getElementById('photoFileInput').click()">
+          <div style="font-size:40px;margin-bottom:12px">📸</div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:6px">Click to upload photos</div>
+          <div style="font-size:13px;color:var(--muted)">JPG, PNG or WEBP · Max 10 MB each · Up to 15 photos</div>
+          <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none" onchange="handlePhotoUpload(this)">
+        </div>
+        <div id="photoPreviewGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px"></div>
+        <div style="margin-top:20px;padding:14px;background:var(--surface2);border-radius:var(--r-md);border:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">📌 Photo tips from top hosts</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.9">
+            • Cover photo: wide shot showing the full space with good lighting<br>
+            • Include photos of the entrance, parking, washrooms, and any unique features<br>
+            • Natural daylight + evening/event lighting shots both help<br>
+            • Minimum 3 photos required to submit for review
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(5)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizValidateStep6()">Next →</button>
+        </div>
+      </div>
+
+      <!-- ── Step 7: Pricing ── -->
+      <div id="wizStep7" style="display:none">
+        <div class="wizard-step-title">Set your pricing</div>
+        <div class="wizard-step-sub">PartyHouse charges guests a 5% platform fee. You keep 95% of every booking.</div>
+        <div style="margin-bottom:8px">
+          <div class="pricing-row">
+            <div><label>Base hourly rate (₹) *</label><small>Standard weekday rate per hour</small></div>
+            <input class="price-input" type="number" id="wizPrice" value="5000" min="500" placeholder="₹">
+          </div>
+          <div class="pricing-row">
+            <div><label>Weekend rate (₹) <span style="font-weight:400;color:var(--muted)">(Fri–Sun)</span></label><small>Leave blank to use the same rate</small></div>
+            <input class="price-input" type="number" id="wizWeekendPrice" placeholder="₹" min="500">
+          </div>
+          <div class="pricing-row">
+            <div><label>Cleaning & setup fee (₹)</label><small>One-time charge per booking</small></div>
+            <input class="price-input" type="number" id="wizCleaning" value="2500" min="0" placeholder="₹">
+          </div>
+          <div class="pricing-row" style="border-bottom:none">
+            <div><label>Refundable security deposit (₹)</label><small>Returned to guest after successful event</small></div>
+            <input class="price-input" type="number" id="wizDeposit" value="10000" min="0" placeholder="₹">
+          </div>
+        </div>
+        <div id="wizEarningsPreview" style="background:linear-gradient(135deg,#fff5f0,#faf8f5);border:1.5px solid rgba(232,69,10,.15);border-radius:var(--r-lg);padding:18px;margin-top:8px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px">Estimated earnings for a 4-hour booking</div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px"><span>4 hrs × ₹<span id="prevRate">5,000</span></span><span>₹<span id="prevTotal">20,000</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px"><span>Platform fee (5%)</span><span>− ₹<span id="prevFee">1,000</span></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:var(--text);padding-top:8px;border-top:1px solid var(--border)"><span>You receive</span><span style="color:var(--accent)">₹<span id="prevNet">19,000</span></span></div>
+        </div>
+        <div class="wizard-footer">
+          <button class="back-btn" onclick="wizNext(6)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:13px 32px" onclick="wizValidateStep7()">Next →</button>
+        </div>
+      </div>
+
+      <!-- ── Step 8: Host Info & Submit ── -->
+      <div id="wizStep8" style="display:none">
+        <div class="wizard-step-title">Your contact details</div>
+        <div class="wizard-step-sub">The PartyHouse team will use this to verify your listing before going live</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="wiz-label">Your full name *</label>
+            <input class="form-input" type="text" id="wizHostName" placeholder="As on your ID">
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Mobile number *</label>
+            <input class="form-input" type="tel" id="wizHostPhone" placeholder="+91 98765 43210" maxlength="13">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="wiz-label">Email address *</label>
+            <input class="form-input" type="email" id="wizHostEmail" placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">GST number <span style="font-weight:400;color:var(--muted)">(if registered)</span></label>
+            <input class="form-input" type="text" id="wizGST" placeholder="22AAAAA0000A1Z5" maxlength="15">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="wiz-label">How long have you been hosting events at this space?</label>
+          <select class="form-input" id="wizExperience">
+            <option value="">Select</option>
+            <option>This will be my first listing</option>
+            <option>Less than 1 year</option>
+            <option>1–3 years</option>
+            <option>More than 3 years</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="wiz-label">Anything else you'd like to tell the review team? <span style="font-weight:400;color:var(--muted)">optional</span></label>
+          <textarea class="form-input" id="wizHostNotes" rows="3" placeholder="Any special features, ongoing renovations, or context that helps us review your listing..." style="resize:vertical"></textarea>
+        </div>
+
+        <!-- Review checklist -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin:24px 0 8px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px">✅ What happens after you submit?</div>
+          <div style="font-size:13px;color:var(--muted);line-height:2.1">
+            1. Our team reviews your listing within <strong style="color:var(--text)">48–72 hours</strong><br>
+            2. We may call or WhatsApp you to verify the property<br>
+            3. Once approved, your venue goes live and starts accepting bookings<br>
+            4. You'll receive an email confirmation at every stage
+          </div>
+        </div>
+        <div style="padding:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md);margin-bottom:8px;font-size:13px;color:#92400e;line-height:1.6">
+          By submitting, you confirm that you have the legal right to list this property and agree to PartyHouse's <strong>Host Terms of Service</strong> and <strong>Community Standards</strong>.
+        </div>
+
+        <div class="wizard-footer" style="padding-top:20px">
+          <button class="back-btn" onclick="wizNext(7)">← Back</button>
+          <button class="next-btn" style="width:auto;padding:14px 36px;font-size:15px" onclick="submitListingForReview()" id="wizSubmitBtn">
+            Submit for Review 🎉
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Step 9: Success ── -->
+      <div id="wizStep9" style="display:none;text-align:center;padding:48px 24px">
+        <div style="font-size:72px;margin-bottom:20px">🎊</div>
+        <div class="wizard-step-title" style="text-align:center;margin-bottom:12px">Listing submitted for review!</div>
+        <p style="color:var(--muted);font-size:15px;max-width:460px;margin:0 auto 28px;line-height:1.7">
+          Thank you for listing your venue on PartyHouse. Our team will review your submission within <strong>48–72 hours</strong> and reach out on the mobile number you provided.
+        </p>
+        <div id="wizConfirmCode" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 28px;font-size:22px;font-weight:800;letter-spacing:3px;display:inline-block;margin-bottom:28px;color:var(--accent);font-family:var(--font-d)"></div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:32px">Save this reference code — quote it when contacting our team.</div>
+        <button style="background:var(--text);color:var(--bg);padding:13px 32px;border-radius:var(--r-pill);font-weight:600;font-size:14px;cursor:pointer" onclick="goPage('home')">Back to Home</button>
+      </div>
+
     </div>
   </div>
 
