@@ -2,11 +2,53 @@
 // app.js — PartyHouse UI logic (Supabase-powered)
 // ============================================================
 
+// ── Indian cities for location autocomplete ───────────────────
+const INDIA_CITIES = [
+  'Agra','Ahmedabad','Aizawl','Ajmer','Aligarh','Allahabad','Amravati','Amritsar',
+  'Aurangabad','Bengaluru','Bhopal','Bhubaneswar','Chandigarh','Chennai','Coimbatore',
+  'Cuttack','Dehradun','Delhi','Dhanbad','Durgapur','Faridabad','Ghaziabad','Goa',
+  'Gorakhpur','Gurgaon','Guwahati','Gwalior','Hubballi','Hyderabad','Imphal',
+  'Indore','Itanagar','Jaipur','Jalandhar','Jammu','Jamshedpur','Jodhpur','Kanpur',
+  'Kochi','Kohima','Kolkata','Kozhikode','Lucknow','Ludhiana','Madurai','Mangaluru',
+  'Meerut','Mumbai','Mysuru','Nagpur','Nashik','Navi Mumbai','Noida','Panaji',
+  'Patna','Prayagraj','Puducherry','Pune','Raipur','Rajkot','Ranchi','Salem',
+  'Shillong','Shimla','Siliguri','Srinagar','Surat','Thane','Thiruvananthapuram',
+  'Tiruchirappalli','Udaipur','Vadodara','Varanasi','Vijayawada','Visakhapatnam'
+];
+
+function initCityAutocomplete() {
+  ['cityListNav','cityListHero'].forEach(id => {
+    const dl = document.getElementById(id);
+    if (!dl) return;
+    INDIA_CITIES.forEach(city => {
+      const opt = document.createElement('option');
+      opt.value = city;
+      dl.appendChild(opt);
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', initCityAutocomplete);
+
+// Hero search button — syncs values to nav bar then searches
+function heroSearch() {
+  const city    = document.getElementById('heroWhere')?.value?.trim() || '';
+  const date    = document.getElementById('heroDate')?.value || '';
+  const occ     = document.getElementById('heroOccasion')?.value || '';
+  const guests  = parseInt(document.getElementById('heroGuests')?.value) || undefined;
+  // Mirror to nav bar so filters stay in sync
+  if (city)   { const nw = document.getElementById('navWhere');   if (nw) nw.value = city; }
+  if (date)   { const nd = document.getElementById('navDate');    if (nd) nd.value = date; }
+  if (occ)    { const no = document.getElementById('navPartyType'); if (no) no.value = occ; }
+  if (guests) { const ng = document.getElementById('navGuests');  if (ng) ng.value = guests; }
+  goPage('search');
+  loadSearch({ city: city || undefined, occasion: occ || undefined, minCapacity: guests });
+}
+
 // ── Confetti ──────────────────────────────────────────────────
 (function spawnConfetti() {
   const container = document.getElementById('confetti');
   if (!container) return;
-  const colors = ['#ff4d6d','#ff9a3c','#ffb400','#fff','#ce93d8'];
+  const colors = ['#e8450a','#f0892a','#d97706','#fde8dd','#f4d0c0'];
   for (let i = 0; i < 28; i++) {
     const dot = document.createElement('div');
     dot.className = 'confetti-dot';
@@ -83,11 +125,14 @@ function toggleSw(id) {
 }
 
 function applyFilters() {
-  const city   = document.getElementById('navWhere')?.value?.trim() || '';
-  const price  = document.getElementById('priceSlider')?.value;
+  const city    = document.getElementById('navWhere')?.value?.trim() || '';
+  const price   = document.getElementById('priceSlider')?.value;
+  const guests  = parseInt(document.getElementById('navGuests')?.value) || undefined;
+  goPage('search');
   loadSearch({
-    city:     city || undefined,
-    maxPrice: price ? parseInt(price) : undefined,
+    city:         city || undefined,
+    maxPrice:     price ? parseInt(price) : undefined,
+    minCapacity:  guests,
   });
 }
 
