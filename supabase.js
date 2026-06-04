@@ -48,18 +48,24 @@ db.auth.onAuthStateChange(async (event, session) => {
 });
 
 function updateNavForUser(profile) {
-  const av   = document.getElementById('userAv');
-  const item = document.getElementById('authToggleItem');
+  const av          = document.getElementById('userAv');
+  const item        = document.getElementById('authToggleItem');
+  const authBtns    = document.getElementById('navAuthButtons');
+  const userMenu    = document.getElementById('userMenuWrap');
   if (profile) {
     const initials = (profile.full_name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-    av.textContent   = initials;
-    av.style.background = 'var(--accent)';
-    item.textContent = '🚪 Log Out';
-    item.onclick     = Auth.signOut;
+    av.textContent       = initials;
+    av.style.background  = 'var(--accent)';
+    item.textContent     = '🚪 Log Out';
+    item.onclick         = Auth.signOut;
+    if (authBtns) authBtns.style.display = 'none';
+    if (userMenu) userMenu.style.display  = 'block';
   } else {
     av.textContent   = '?';
     item.textContent = '🔐 Log In / Sign Up';
     item.onclick     = () => goPage('auth');
+    if (authBtns) authBtns.style.display = 'flex';
+    if (userMenu) userMenu.style.display  = 'none';
   }
 }
 
