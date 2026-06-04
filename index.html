@@ -24,7 +24,8 @@
     <div class="search-bar" id="navSearchBar">
       <div class="search-seg">
         <label>Where</label>
-        <input type="text" placeholder="City or venue type..." id="navWhere">
+        <input type="text" placeholder="City or area..." id="navWhere" autocomplete="off" list="cityListNav">
+        <datalist id="cityListNav"></datalist>
       </div>
       <div class="search-seg">
         <label>Party Date</label>
@@ -44,9 +45,9 @@
       </div>
       <div class="search-seg" style="flex:.7">
         <label>Guests</label>
-        <input type="text" placeholder="How many?" id="navGuests">
+        <input type="number" placeholder="How many?" id="navGuests" min="1" max="500" step="1">
       </div>
-      <button class="search-btn" onclick="goPage('search')" data-tip="Search party venues">
+      <button class="search-btn" onclick="applyFilters()" data-tip="Search party venues">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Find Venues
       </button>
@@ -117,16 +118,17 @@
         <div class="hero-search">
           <div class="hs-seg">
             <label>Where?</label>
-            <input type="text" placeholder="Mumbai, Goa, Bangalore...">
+            <input type="text" placeholder="Mumbai, Goa, Bangalore..." id="heroWhere" autocomplete="off" list="cityListHero">
+            <datalist id="cityListHero"></datalist>
           </div>
           <div class="hs-seg">
             <label>Party Date</label>
-            <input type="date">
+            <input type="date" id="heroDate">
           </div>
           <div class="hs-seg" style="flex:.9">
             <label>Occasion</label>
-            <select style="border:none;outline:none;font-size:13px;color:var(--muted);background:transparent;width:100%;cursor:pointer">
-              <option>Any occasion</option>
+            <select id="heroOccasion" style="border:none;outline:none;font-size:13px;color:var(--muted);background:transparent;width:100%;cursor:pointer">
+              <option value="">Any occasion</option>
               <option>Couple Celebration</option>
               <option>Family Party</option>
               <option>Group Event</option>
@@ -136,9 +138,9 @@
           </div>
           <div class="hs-seg" style="flex:.7">
             <label>Guests</label>
-            <input type="text" placeholder="10 people">
+            <input type="number" placeholder="How many?" id="heroGuests" min="1" max="500" step="1">
           </div>
-          <button class="hero-search-btn" onclick="goPage('search')">
+          <button class="hero-search-btn" onclick="heroSearch()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             Find Venues
           </button>
