@@ -565,8 +565,27 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
 /* occ-check */
 .occ-check{padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--r-md);background:var(--surface);transition:border-color .15s;font-size:13px}
 .occ-check:has(input:checked){border-color:var(--accent);background:rgba(232,69,10,.04)}
-/* Two-column row inside wizard */
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* ── Admin Panel ─────────────────────────── */
+.admin-tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.admin-tab:hover{color:var(--text)}
+.admin-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.admin-venue-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-xl);padding:22px;margin-bottom:14px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start}
+.admin-venue-card.pending{border-left:4px solid var(--warn)}
+.admin-venue-card.approved{border-left:4px solid var(--success)}
+.admin-venue-card.rejected{border-left:4px solid #ef4444}
+.admin-badge{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.admin-badge.pending{background:#fef3c7;color:#92400e}
+.admin-badge.approved{background:#d1fae5;color:#065f46}
+.admin-badge.rejected{background:#fee2e2;color:#991b1b}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-approve{background:var(--success);color:#fff;padding:8px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s}
+.btn-approve:hover{opacity:.85}
+.btn-reject{background:#ef4444;color:#fff;padding:8px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s}
+.btn-reject:hover{opacity:.85}
+.btn-review{background:var(--surface2);border:1.5px solid var(--border);padding:8px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s}
+.btn-review:hover{border-color:#aaa}
+.admin-notes-box{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-md);padding:10px 14px;font-size:13px;outline:none;color:var(--text);resize:vertical;min-height:80px;margin-top:12px;font-family:var(--font-b)}
+.admin-notes-box:focus{border-color:var(--accent)}
 @media(max-width:560px){.form-row{grid-template-columns:1fr}.type-grid{grid-template-columns:repeat(2,1fr)}.amenity-check-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* ── Trips ───────────────────────────────── */
