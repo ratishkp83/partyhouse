@@ -6,7 +6,7 @@
 <title>PartyHouse — Find Your Perfect Party Venue</title>
 <meta name="description" content="Discover and book unique party venues for couples, families, and groups. Birthdays, anniversaries, celebrations — find your perfect PartyHouse.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -55,7 +55,13 @@
     <div class="nav-right">
       <div class="nav-link" onclick="goPage('host')" data-tip="List your venue for parties">List Your Venue</div>
       <div class="nav-icon" data-tip="Change language or currency">🌐</div>
-      <div class="user-menu" id="userMenuWrap">
+      <!-- Shown when logged out -->
+      <div id="navAuthButtons" style="display:flex;align-items:center;gap:8px">
+        <button class="nav-login-btn" onclick="goPage('auth')" data-tip="Sign in to your account">Log in</button>
+        <button class="nav-signup-btn" onclick="goPage('auth')" data-tip="Create a free account">Sign up</button>
+      </div>
+      <!-- Shown when logged in -->
+      <div class="user-menu" id="userMenuWrap" style="display:none">
         <button class="user-btn" onclick="toggleMenu()" data-tip="Account, bookings, and messages">
           <span class="menu-icon">☰</span>
           <div class="user-avatar" id="userAv">?</div>
