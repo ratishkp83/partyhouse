@@ -80,6 +80,7 @@ function goPage(id) {
   if (id === 'wishlist')     loadWishlist();
   if (id === 'dashboard')    loadDashboard();
   if (id === 'new-listing')  startNewListing();
+  if (id === 'admin')        loadAdminPanel();
 }
 
 // ── Dropdown ──────────────────────────────────────────────────
@@ -701,3 +702,189 @@ async function submitListingForReview() {
 
 // ── Misc helpers ──────────────────────────────────────────────
 function toggleHeart(btn) { btn.classList.toggle('saved'); }
+
+// ── Admin Panel ───────────────────────────────────────────────
+let adminCurrentTab = 'pending';
+
+async function loadAdminPanel() {
+  // Guard: only admin role can access
+  if (!currentProfile || currentProfile.role !== 'admin') {
+    document.getElementById('adminVenuesList').innerHTML =
+      '<div style="text-align:center;padding:64px;color:var(--muted)">' +
+      '<div style="font-size:48px;margin-bottom:16px">🔒</div>' +
+      '<div style="font-size:16px;font-weight:600">Admin access required</div>' +
+      '<div style="font-size:13px;margin-top:8px">Your account does not have admin privileges.</div></div>';
+    return;
+  }
+  adminTab(adminCurrentTab);
+}
+
+async function adminTab(tab) {
+  adminCurrentTab = tab;
+  // Update tab UI
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  const tabEl = document.getElementById('atab-' + tab);
+  if (tabEl) tabEl.classList.add('active');
+
+  const list = document.getElementById('adminVenuesList');
+  list.innerHTML = '<div style="color:var(--muted);padding:24px">Loading…</div>';
+
+  // Fetch venues based on tab
+  let query = db.from('venues').select('*, host:profiles!host_id(full_name, email)').order('created_at', { ascending: false });
+  if (tab === 'pending')  query = query.eq('is_active', false);
+  if (tab === 'approved') query = query.eq('is_active', true);
+  if (tab === 'rejected') query = query.eq('is_active', false).like('host_notes', '%REJECTED%');
+
+  const { data: venues, error } = await query;
+  if (error) { list.innerHTML = `<div style="color:red">Error: ${error.message}</div>`; return; }
+
+  // Update pending count
+  if (tab === 'pending') {
+    const pendingEl = document.getElementById('adminPendingCount');
+    if (pendingEl) pendingEl.textContent = venues?.length || 0;
+  }
+
+  if (!venues?.length) {
+    list.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">No venues in this category.</div>';
+    return;
+  }
+
+  const isRejected = v => v.host_notes?.includes('REJECTED');
+  const statusOf   = v => v.is_active ? 'approved' : (isRejected(v) ? 'rejected' : 'pending');
+
+  list.innerHTML = venues.map(v => {
+    const status = statusOf(v);
+    const submitted = new Date(v.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+    // Extract host contact from host_notes first line
+    const hostLine = (v.host_notes || '').split('\n')[0] || '';
+    return `
+    <div class="admin-venue-card ${status}">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+          <span style="font-size:20px">${v.cover_emoji || '🎉'}</span>
+          <strong style="font-size:16px">${v.name || 'Unnamed venue'}</strong>
+          <span class="admin-badge ${status}">${status}</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">
+          📍 ${v.city || '—'} &nbsp;·&nbsp; ${v.venue_type || '—'} &nbsp;·&nbsp; 👥 Up to ${v.capacity || '?'}
+          &nbsp;·&nbsp; ₹${(v.price_per_hour||0).toLocaleString('en-IN')}/hr
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">
+          🗓 Submitted ${submitted} &nbsp;·&nbsp; 🧑 ${v.host?.full_name || 'Unknown host'}
+        </div>
+        <div style="font-size:12px;color:var(--muted)">${hostLine}</div>
+      </div>
+      <div class="admin-actions">
+        <button class="btn-review" onclick="openAdminModal('${v.id}')">View Details</button>
+        ${status === 'pending' ? `
+          <button class="btn-approve" onclick="adminApprove('${v.id}')">✅ Approve</button>
+          <button class="btn-reject"  onclick="adminRejectPrompt('${v.id}')">❌ Reject</button>
+        ` : ''}
+        ${status === 'approved' ? `<button class="btn-reject" onclick="adminRevoke('${v.id}')">Revoke</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openAdminModal(venueId) {
+  const { data: v } = await db.from('venues')
+    .select('*, host:profiles!host_id(full_name, email)')
+    .eq('id', venueId).single();
+  if (!v) return;
+
+  const notes = (v.host_notes || '').split('\n').filter(Boolean);
+  document.getElementById('adminModalContent').innerHTML = `
+    <div style="font-size:22px;font-weight:800;margin-bottom:4px">${v.cover_emoji || '🎉'} ${v.name}</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:20px">${v.city} · ${v.venue_type} · Submitted ${new Date(v.created_at).toLocaleDateString('en-IN')}</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Capacity & Pricing</div>
+        <div style="font-size:13px;line-height:1.9">
+          👥 Up to ${v.capacity} guests<br>
+          ⏱ Min ${v.min_hours} hours<br>
+          💰 ₹${(v.price_per_hour||0).toLocaleString('en-IN')}/hr<br>
+          ${v.weekend_rate ? `📅 Weekend: ₹${v.weekend_rate.toLocaleString('en-IN')}/hr<br>` : ''}
+          🧹 Cleaning: ₹${(v.cleaning_fee||0).toLocaleString('en-IN')}<br>
+          🔐 Deposit: ₹${(v.security_deposit||0).toLocaleString('en-IN')}
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Amenities</div>
+        <div style="font-size:13px;line-height:1.9">${(v.amenities||[]).join(' · ') || '—'}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Host Submission Notes</div>
+      ${notes.map(n => `<div style="font-size:13px;color:var(--text);line-height:1.8;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:4px">${n}</div>`).join('')}
+    </div>
+
+    <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Venue Description</div>
+      <div style="font-size:13px;line-height:1.7">${v.description || '—'}</div>
+    </div>
+
+    <textarea class="admin-notes-box" id="adminReviewNote" placeholder="Add review notes (optional — saved with approval/rejection)…"></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+      <button class="btn-review" onclick="closeAdminModal()">Close</button>
+      ${!v.is_active && !v.host_notes?.includes('REJECTED') ? `
+        <button class="btn-approve" onclick="adminApprove('${v.id}');closeAdminModal()">✅ Approve Listing</button>
+        <button class="btn-reject"  onclick="adminRejectPrompt('${v.id}');closeAdminModal()">❌ Reject Listing</button>
+      ` : ''}
+      ${v.is_active ? `<button class="btn-reject" onclick="adminRevoke('${v.id}');closeAdminModal()">Revoke Listing</button>` : ''}
+    </div>`;
+
+  document.getElementById('adminModal').style.display = 'block';
+}
+
+function closeAdminModal() {
+  document.getElementById('adminModal').style.display = 'none';
+}
+
+async function adminApprove(venueId) {
+  const note = document.getElementById('adminReviewNote')?.value?.trim() || '';
+  const { error } = await db.from('venues').update({
+    is_active: true,
+    host_notes: db.rpc ? undefined : undefined, // preserve existing notes
+  }).eq('id', venueId);
+
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+  // Append approval record to host_notes
+  await db.from('venues').update({
+    host_notes: db.from ? undefined : undefined,
+  }).eq('id', venueId); // notes append handled below
+
+  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
+  const updatedNotes = (v?.host_notes || '') + `\n\n✅ APPROVED by admin on ${new Date().toLocaleDateString('en-IN')}${note ? '\nAdmin note: ' + note : ''}`;
+  await db.from('venues').update({ is_active: true, host_notes: updatedNotes }).eq('id', venueId);
+
+  showToast('Venue approved and now live! ✅', 'success');
+  loadAdminPanel();
+}
+
+async function adminRejectPrompt(venueId) {
+  const reason = prompt('Rejection reason (will be stored with the listing):');
+  if (reason === null) return; // cancelled
+  await adminReject(venueId, reason);
+}
+
+async function adminReject(venueId, reason) {
+  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
+  const updatedNotes = (v?.host_notes || '') + `\n\n❌ REJECTED by admin on ${new Date().toLocaleDateString('en-IN')}\nReason: ${reason || 'No reason given'}`;
+  const { error } = await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Venue rejected.', 'info');
+  loadAdminPanel();
+}
+
+async function adminRevoke(venueId) {
+  if (!confirm('Revoke this listing? It will go offline immediately.')) return;
+  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
+  const updatedNotes = (v?.host_notes || '') + `\n\n⏸ REVOKED by admin on ${new Date().toLocaleDateString('en-IN')}`;
+  await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
+  showToast('Listing revoked.', 'info');
+  loadAdminPanel();
+}
