@@ -55,17 +55,43 @@ function updateNavForUser(profile) {
   if (profile) {
     const initials = (profile.full_name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     av.textContent       = initials;
-    av.style.background  = 'var(--accent)';
+    av.style.background  = profile.role === 'admin' ? '#7c3aed' : 'var(--accent)';
     item.textContent     = '🚪 Log Out';
     item.onclick         = Auth.signOut;
     if (authBtns) authBtns.style.display = 'none';
     if (userMenu) userMenu.style.display  = 'block';
+
+    // Show/hide admin nav link
+    let adminLink = document.getElementById('navAdminLink');
+    if (profile.role === 'admin') {
+      if (!adminLink) {
+        adminLink = document.createElement('div');
+        adminLink.id = 'navAdminLink';
+        adminLink.className = 'nav-link';
+        adminLink.style.cssText = 'color:#7c3aed;font-weight:700';
+        adminLink.setAttribute('data-tip', 'Admin review panel');
+        adminLink.onclick = () => goPage('admin');
+        adminLink.textContent = '⚙️ Admin';
+        const navRight = document.querySelector('.nav-right');
+        if (navRight) navRight.insertBefore(adminLink, navRight.firstChild);
+      }
+      // Check pending count and show badge
+      db.from('venues').select('id', { count: 'exact', head: true })
+        .eq('is_active', false)
+        .then(({ count }) => {
+          if (count > 0) adminLink.textContent = `⚙️ Admin 🔴${count}`;
+        });
+    } else {
+      if (adminLink) adminLink.remove();
+    }
   } else {
     av.textContent   = '?';
     item.textContent = '🔐 Log In / Sign Up';
     item.onclick     = () => goPage('auth');
     if (authBtns) authBtns.style.display = 'flex';
     if (userMenu) userMenu.style.display  = 'none';
+    const adminLink = document.getElementById('navAdminLink');
+    if (adminLink) adminLink.remove();
   }
 }
 
