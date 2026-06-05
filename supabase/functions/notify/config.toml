@@ -1,0 +1,2 @@
+[functions.notify]
+verify_jwt = false  # DB webhooks don't send a JWT; direct browser calls are authenticated separately

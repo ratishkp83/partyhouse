@@ -1163,6 +1163,8 @@ async function adminApprove(venueId) {
   showToast('Venue approved and now live! ✅', 'success');
   closeAdminModal();
   loadAdminPanel();
+  // Fire-and-forget — email host and admin; failure is non-fatal
+  Notify.venueApproved(venueId, note);
 }
 
 async function adminRejectPrompt(venueId) {
@@ -1179,6 +1181,8 @@ async function adminReject(venueId, reason) {
   showToast('Venue rejected.', 'info');
   closeAdminModal();
   loadAdminPanel();
+  // Fire-and-forget — email host; failure is non-fatal
+  Notify.venueRejected(venueId, reason);
 }
 
 async function adminRevoke(venueId) {

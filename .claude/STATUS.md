@@ -28,7 +28,7 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 | Admin RLS | ✅ Fixed | `venues_admin_all` policy applied; admin role set on profile |
 | Seed data | ❌ Not done | No real venues in DB yet |
 | Razorpay payments | ❌ Blocked | Need Razorpay account + API keys before starting |
-| Admin email notifications | ❌ Not started | Needs Supabase Edge Function |
+| Admin email notifications | ✅ Built | Edge Function + Resend. See `supabase/DEPLOY.md` to deploy. |
 | Cloudflare Pages | ❌ Not started | Replace GitHub Pages |
 | Real-time messaging UI | ❌ Not started | Schema + `Messages` API ready, UI not built |
 
@@ -342,3 +342,4 @@ Then:
 | 10 | 2026-06-05 | Availability calendar: month-view date picker, booked dates blocked (pink/strikethrough), start time picker, time-overlap conflict check in startBooking() |
 | 11 | 2026-06-05 | Weekend rate fix: added weekend_rate column to schema, calcPrice() applies it on Sat/Sun with "Weekend rate" label, selectCalDate() triggers recalc, rules object stripped from venue insert payload |
 | 12 | 2026-06-05 | Edit Listing: ✏️ Edit button on each venue card in Host Dashboard, 4-tab modal (Basics/Pricing/Rules & Amenities/Occasions), pre-filled from live venue data, saves via Venues.update(), triggers re-review if name/description changed on active listing |
+| 13 | 2026-06-05 | Admin notifications: notify Edge Function (supabase/functions/notify/index.ts), 3 email types (new_venue via DB webhook, venue_approved, venue_rejected), Resend templates, Notify helper in supabase.js, wired into adminApprove/adminReject |

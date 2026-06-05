@@ -623,3 +623,45 @@ async function loadVenuePage(venueId) {
 
   calcPrice();
 }
+
+// ── Notify (Edge Function caller) ────────────────────────────
+const Notify = {
+  // Base URL for the deployed Edge Function
+  // Update this after deploying: Supabase → Edge Functions → notify → copy URL
+  _url() {
+    const projectRef = 'hxeskohikmtpzfrmovot';
+    return `https://${projectRef}.supabase.co/functions/v1/notify`;
+  },
+
+  async _call(payload) {
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      const res = await fetch(this._url(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.warn('Notify function responded with error:', err);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      // Non-fatal — email failure should never block the admin action
+      console.warn('Notify call failed (non-fatal):', e);
+      return false;
+    }
+  },
+
+  venueApproved(venueId, adminNote = '') {
+    return this._call({ type: 'venue_approved', venueId, adminNote });
+  },
+
+  venueRejected(venueId, reason = '') {
+    return this._call({ type: 'venue_rejected', venueId, reason });
+  },
+};
