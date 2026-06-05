@@ -470,11 +470,45 @@
             <div class="bw-price">₹<span id="listingPrice">12,000</span> <span>/ hour</span></div>
             <div class="bw-row-label">Minimum 4 hours · Up to 50 guests</div>
 
+            <!-- Availability Calendar -->
+            <div class="avail-cal" id="availCal">
+              <div class="avail-cal-nav">
+                <button onclick="calPrevMonth()" class="cal-nav-btn">‹</button>
+                <span class="cal-month-label" id="calMonthLabel"></span>
+                <button onclick="calNextMonth()" class="cal-nav-btn">›</button>
+              </div>
+              <div class="avail-cal-grid">
+                <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+                <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>
+                <div id="calDays"></div>
+              </div>
+              <div class="cal-legend">
+                <span class="cal-leg-item"><span class="cal-leg-dot avail"></span>Available</span>
+                <span class="cal-leg-item"><span class="cal-leg-dot booked"></span>Booked</span>
+                <span class="cal-leg-item"><span class="cal-leg-dot selected"></span>Selected</span>
+              </div>
+            </div>
+
             <div class="bw-dates">
               <div class="bw-date">
                 <label>Party Date</label>
-                <input type="date" id="bwDate">
+                <div id="bwDateDisplay" style="font-size:13px;color:var(--muted);padding-top:2px">Pick from calendar ↑</div>
+                <input type="hidden" id="bwDate">
               </div>
+              <div class="bw-date">
+                <label>Start Time</label>
+                <select id="bwStartTime" onchange="calcPrice()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                  <option value="10:00">10:00 AM</option>
+                  <option value="12:00">12:00 PM</option>
+                  <option value="14:00">2:00 PM</option>
+                  <option value="16:00">4:00 PM</option>
+                  <option value="18:00" selected>6:00 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="22:00">10:00 PM</option>
+                </select>
+              </div>
+            </div>
+            <div class="bw-dates" style="margin-top:8px">
               <div class="bw-date">
                 <label>Duration</label>
                 <select id="bwHours" onchange="calcPrice()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
@@ -484,12 +518,9 @@
                   <option value="12">12 hours</option>
                   <option value="18">Full day (18h)</option>
                 </select>
-              </div>
-            </div>
-            <div class="bw-dates" style="margin-top:8px">
-              <div class="bw-date" style="flex:1;border-right:none">
+              <div class="bw-date" style="border-left:1px solid var(--border)">
                 <label>Occasion</label>
-                <select style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                <select id="bwOccasion" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
                   <option>Birthday</option>
                   <option>Anniversary</option>
                   <option>Group Party</option>

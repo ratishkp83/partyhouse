@@ -343,6 +343,17 @@ const Bookings = {
 
   async cancel(bookingId) {
     return this.updateStatus(bookingId, 'cancelled');
+  },
+
+  // Returns array of { party_date, start_time, hours } for active bookings on a venue
+  async getVenueAvailability(venueId) {
+    const { data } = await db
+      .from('bookings')
+      .select('party_date, start_time, hours')
+      .eq('venue_id', venueId)
+      .in('status', ['pending', 'confirmed'])
+      .gte('party_date', new Date().toISOString().split('T')[0]);  // only future
+    return data || [];
   }
 };
 
@@ -573,6 +584,9 @@ async function loadVenuePage(venueId) {
 
   if (!venue) { showToast('Venue not found', 'error'); goPage('search'); return; }
   selectedVenueData = venue;
+
+  // Init availability calendar
+  initCalendar(venueId);
 
   // Populate listing page
   document.getElementById('listingTitle').textContent   = venue.name;

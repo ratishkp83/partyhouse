@@ -207,6 +207,105 @@ function calcPrice() {
   return { hours, rate, cleaning, fee, total };
 }
 
+// ── Availability Calendar ─────────────────────────────────────
+let calYear   = 0;
+let calMonth  = 0;  // 0-based
+let calSelectedDate  = null;   // 'YYYY-MM-DD'
+let calBookedDates   = [];     // array of booking objects { party_date, start_time, hours }
+
+async function initCalendar(venueId) {
+  const today = new Date();
+  calYear  = today.getFullYear();
+  calMonth = today.getMonth();
+  calSelectedDate = null;
+  document.getElementById('bwDate').value = '';
+  document.getElementById('bwDateDisplay').textContent = 'Pick from calendar ↑';
+  document.getElementById('bwDateDisplay').style.color = 'var(--muted)';
+  calBookedDates = await Bookings.getVenueAvailability(venueId);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonthLabel').textContent = `${months[calMonth]} ${calYear}`;
+
+  const today      = new Date();
+  today.setHours(0,0,0,0);
+  const firstDay   = new Date(calYear, calMonth, 1).getDay();  // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  // Build a set of dates that are fully booked (treat whole day as blocked when any booking exists)
+  const bookedSet = new Set(calBookedDates.map(b => b.party_date));
+
+  let html = '';
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day cal-empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dateObj = new Date(calYear, calMonth, d);
+    const isPast    = dateObj < today;
+    const isToday   = dateObj.getTime() === today.getTime();
+    const isBooked  = bookedSet.has(dateStr);
+    const isSelected = dateStr === calSelectedDate;
+
+    let cls = 'cal-day';
+    if (isPast)     cls += ' cal-past';
+    else if (isBooked)  cls += ' cal-booked';
+    else if (isSelected) cls += ' cal-selected';
+    if (isToday && !isPast) cls += ' cal-today';
+
+    const onclick = (!isPast && !isBooked) ? `onclick="selectCalDate('${dateStr}')"` : '';
+    const tip     = isBooked ? `data-tip="Already booked"` : (!isPast ? `data-tip="Select ${dateStr}"` : '');
+    html += `<div class="${cls}" ${onclick} ${tip}>${d}</div>`;
+  }
+
+  document.getElementById('calDays').innerHTML = html;
+}
+
+function selectCalDate(dateStr) {
+  calSelectedDate = dateStr;
+  document.getElementById('bwDate').value = dateStr;
+  // Format display nicely
+  const d = new Date(dateStr + 'T00:00:00');
+  const display = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  document.getElementById('bwDateDisplay').textContent = display;
+  document.getElementById('bwDateDisplay').style.color = 'var(--text)';
+  renderCalendar();  // re-render to show selection
+}
+
+function calPrevMonth() {
+  if (calMonth === 0) { calMonth = 11; calYear--; } else calMonth--;
+  // Don't allow going before current month
+  const now = new Date();
+  if (calYear < now.getFullYear() || (calYear === now.getFullYear() && calMonth < now.getMonth())) {
+    calMonth = now.getMonth(); calYear = now.getFullYear();
+  }
+  renderCalendar();
+}
+
+function calNextMonth() {
+  if (calMonth === 11) { calMonth = 0; calYear++; } else calMonth++;
+  renderCalendar();
+}
+
+// Check if selected date+time overlaps with an existing booking
+function hasTimeConflict(date, startTime, hours) {
+  const start = timeToMins(startTime);
+  const end   = start + hours * 60;
+  return calBookedDates.some(b => {
+    if (b.party_date !== date) return false;
+    const bs = timeToMins(b.start_time);
+    const be = bs + b.hours * 60;
+    return start < be && end > bs;  // overlap
+  });
+}
+
+function timeToMins(t) {
+  const [h, m] = (t || '18:00').split(':').map(Number);
+  return h * 60 + m;
+}
+
 // ── Booking flow ──────────────────────────────────────────────
 let bookStep = 1;
 let createdBooking = null;
@@ -226,6 +325,20 @@ function nextStep(n) {
 
 async function startBooking() {
   if (!Auth.requireAuth('make a booking')) return;
+
+  const date      = document.getElementById('bwDate')?.value;
+  const startTime = document.getElementById('bwStartTime')?.value || '18:00';
+  const hours     = parseInt(document.getElementById('bwHours')?.value || 6);
+
+  if (!date) {
+    showToast('Please select a date on the calendar first 📅', 'warn');
+    return;
+  }
+  if (hasTimeConflict(date, startTime, hours)) {
+    showToast('That time slot is already booked. Try a different start time or date.', 'error');
+    return;
+  }
+
   bookStep = 1;
   document.getElementById('bookStep1').style.display = 'block';
   document.getElementById('bookStep2').style.display = 'none';
@@ -241,14 +354,15 @@ function populateBookingSummary() {
   const price = calcPrice();
   const date  = document.getElementById('bwDate')?.value || 'TBD';
   const hours = document.getElementById('bwHours')?.value || 6;
-  const occ   = document.querySelector('.bw-dates select')?.value || 'Party';
+  const occ   = document.getElementById('bwOccasion')?.value || 'Party';
+  const time  = document.getElementById('bwStartTime')?.value || '18:00';
 
   const summaryEl = document.getElementById('bookingSummaryVenue');
   if (summaryEl) summaryEl.textContent = v.name;
   const summaryCity = document.getElementById('bookingSummaryCity');
   if (summaryCity) summaryCity.textContent = v.city;
   const summaryDate = document.getElementById('bookingSummaryDate');
-  if (summaryDate) summaryDate.textContent = `Date: ${date} · ${hours} hours · ${occ} · ${guestCount} guests`;
+  if (summaryDate) summaryDate.textContent = `${date} at ${time} · ${hours} hrs · ${occ} · ${guestCount} guests`;
 
   // Price breakdown in step 1
   const pb = document.getElementById('bookingPriceBreakdown');
@@ -266,16 +380,18 @@ function populateBookingSummary() {
 
 async function confirmPayment() {
   if (!selectedVenueData) return;
-  const v     = selectedVenueData;
-  const price = calcPrice();
-  const date  = document.getElementById('bwDate')?.value;
-  const hours = parseInt(document.getElementById('bwHours')?.value || 6);
-  const occ   = document.querySelector('#page-listing .bw-dates select')?.value || 'Party';
+  const v         = selectedVenueData;
+  const price     = calcPrice();
+  const date      = document.getElementById('bwDate')?.value;
+  const startTime = document.getElementById('bwStartTime')?.value || '18:00';
+  const hours     = parseInt(document.getElementById('bwHours')?.value || 6);
+  const occ       = document.getElementById('bwOccasion')?.value || 'Party';
 
   showToast('Processing booking…', 'info');
 
   createdBooking = await Bookings.create(v.id, {
     partyDate:    date || new Date().toISOString().split('T')[0],
+    startTime,
     hours,
     occasion:     occ,
     guestsCount:  guestCount,

@@ -337,4 +337,6 @@ Then:
 | 5 | 2026-06-04 | Full 8-step venue listing wizard (type/location/details/rules/amenities/photos/pricing/host info), review workflow with is_active=false |
 | 6 | 2026-06-04 | Fixed: goPage('host') → goPage('new-listing'), null guards in goPage(), toggleSw dedup, startNewListing() reset function |
 | 7 | 2026-06-04 | Admin panel — pending/approved/rejected tabs, venue detail modal, approve/reject/revoke with audit trail, admin nav badge |
-| 8 | 2026-06-05 | Fixed all critical issues: admin RLS policy, admin role set, storage buckets created, adminApprove() simplified to single DB call, duplicate closeAdminModal() calls removed from all admin actions |
+| 8 | 2026-06-05 | Fixed all critical issues: admin RLS policy, admin role set, storage buckets created, adminApprove() simplified, duplicate closeAdminModal() removed |
+| 9 | 2026-06-05 | Messaging UI: inbox sidebar, chat panel, real-time via Supabase, unread badge, Contact Host button; added messages_update RLS policy |
+| 10 | 2026-06-05 | Availability calendar: month-view date picker, booked dates blocked (pink/strikethrough), start time picker, time-overlap conflict check in startBooking() |
