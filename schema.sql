@@ -60,6 +60,7 @@ create table venues (
   lng               numeric(10,7),
   capacity          int not null default 20,
   price_per_hour    int not null,           -- INR
+  weekend_rate      int default null,       -- INR/hr override for Sat/Sun (null = same as weekday)
   min_hours         int not null default 4,
   cleaning_fee      int default 0,
   security_deposit  int default 0,

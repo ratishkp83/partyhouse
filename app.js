@@ -190,8 +190,16 @@ function adjGuests(d) {
 
 function calcPrice() {
   const hours    = parseInt(document.getElementById('bwHours')?.value || 6);
-  const rate     = selectedVenueData?.price_per_hour || 12000;
   const cleaning = selectedVenueData?.cleaning_fee   || 3500;
+
+  // Apply weekend rate if the selected date is Saturday (6) or Sunday (0)
+  const dateVal   = document.getElementById('bwDate')?.value;
+  const isWeekend = dateVal ? [0, 6].includes(new Date(dateVal + 'T00:00:00').getDay()) : false;
+  const weekdayRate  = selectedVenueData?.price_per_hour || 12000;
+  const weekendRate  = selectedVenueData?.weekend_rate   || null;
+  const rate         = (isWeekend && weekendRate) ? weekendRate : weekdayRate;
+  const rateLabel    = (isWeekend && weekendRate) ? `₹${rate.toLocaleString('en-IN')} × ${hours} hrs <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>` : `₹${rate.toLocaleString('en-IN')} × ${hours} hours`;
+
   const subtotal = rate * hours;
   const fee      = Math.round((subtotal + cleaning) * 0.08);
   const total    = subtotal + cleaning + fee;
@@ -199,7 +207,7 @@ function calcPrice() {
   const bd = document.getElementById('bwBreakdown');
   if (bd) {
     bd.innerHTML = `
-      <div class="bw-row"><span>₹${rate.toLocaleString('en-IN')} × ${hours} hours</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
+      <div class="bw-row"><span>${rateLabel}</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
       <div class="bw-row"><span>Cleaning & setup fee</span><span>₹${cleaning.toLocaleString('en-IN')}</span></div>
       <div class="bw-row"><span>PartyHouse service fee (8%)</span><span>₹${fee.toLocaleString('en-IN')}</span></div>
       <div class="bw-row total"><span>Total</span><span>₹${total.toLocaleString('en-IN')}</span></div>`;
@@ -272,6 +280,7 @@ function selectCalDate(dateStr) {
   document.getElementById('bwDateDisplay').textContent = display;
   document.getElementById('bwDateDisplay').style.color = 'var(--text)';
   renderCalendar();  // re-render to show selection
+  calcPrice();       // recalculate — may switch to weekend rate
 }
 
 function calPrevMonth() {
@@ -800,6 +809,8 @@ async function submitListingForReview() {
       document.getElementById('wizHostNotes')?.value?.trim() || '',
     ].filter(Boolean).join('\n'),
   };
+  // Strip keys that don't exist as DB columns to avoid Supabase insert errors
+  delete payload.rules;
 
   const venue = await Venues.create(payload);
 
