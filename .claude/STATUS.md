@@ -26,7 +26,7 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 | Google OAuth | ✅ Done | Redirect URI already in Google Cloud Console |
 | Supabase Storage | ✅ Done | Buckets `venue-photos` and `avatars` created |
 | Admin RLS | ✅ Fixed | `venues_admin_all` policy applied; admin role set on profile |
-| Seed data | ❌ Not done | No real venues in DB yet |
+| Seed data | ✅ Ready to run | `supabase/seed.sql` — 8 venues across Mumbai, Bangalore, Delhi. Replace `<YOUR_USER_UUID>` and run in SQL Editor. |
 | Razorpay payments | ❌ Blocked | Need Razorpay account + API keys before starting |
 | Admin email notifications | ✅ Built | Edge Function + Resend. See `supabase/DEPLOY.md` to deploy. |
 | Cloudflare Pages | ❌ Not started | Replace GitHub Pages |
@@ -343,3 +343,4 @@ Then:
 | 11 | 2026-06-05 | Weekend rate fix: added weekend_rate column to schema, calcPrice() applies it on Sat/Sun with "Weekend rate" label, selectCalDate() triggers recalc, rules object stripped from venue insert payload |
 | 12 | 2026-06-05 | Edit Listing: ✏️ Edit button on each venue card in Host Dashboard, 4-tab modal (Basics/Pricing/Rules & Amenities/Occasions), pre-filled from live venue data, saves via Venues.update(), triggers re-review if name/description changed on active listing |
 | 13 | 2026-06-05 | Admin notifications: notify Edge Function (supabase/functions/notify/index.ts), 3 email types (new_venue via DB webhook, venue_approved, venue_rejected), Resend templates, Notify helper in supabase.js, wired into adminApprove/adminReject |
+| 14 | 2026-06-06 | Seed data: supabase/seed.sql — 8 venues (Mumbai ×4, Bangalore ×2, Delhi ×2), all 7 venue types, weekend rates, ratings, full amenity/occasion sets |
