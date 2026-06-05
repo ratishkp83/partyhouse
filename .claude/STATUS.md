@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-05  
+**Last updated:** 2026-06-06  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -11,7 +11,7 @@
 PartyHouse is a party venue booking platform — a purpose-specific alternative to Airbnb focused on celebration spaces. Hourly pricing, occasion-based filtering, venue types: Rooftop / Villa / Garden / Pool / Hall / Farmhouse / Penthouse / Unique.
 
 **Target users:** Couples, families, groups booking venues for parties  
-**Tech stack:** Vanilla HTML/CSS/JS (no framework) · Supabase (Postgres + Auth + Storage) · GitHub Pages (hosting, migrating to Cloudflare Pages)  
+**Tech stack:** Vanilla HTML/CSS/JS (no framework) · Supabase (Postgres + Auth + Storage) · GitHub Pages (hosting, migrating to Cloudflare Pages later)  
 **Design:** Warm off-white light theme · Plus Jakarta Sans + Inter fonts · Terracotta accent (#e8450a)
 
 ---
@@ -21,16 +21,16 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 | Service | Status | Details |
 |---|---|---|
 | GitHub Pages | ✅ Live | https://ratishkp83.github.io/partyhouse/ |
-| Supabase DB | ✅ Live | Schema deployed, RLS enabled |
+| Supabase DB | ✅ Live | Schema deployed, RLS enabled, `weekend_rate` column added |
 | Email auth | ✅ Working | Sign up / login functional |
 | Google OAuth | ✅ Done | Redirect URI already in Google Cloud Console |
 | Supabase Storage | ✅ Done | Buckets `venue-photos` and `avatars` created |
 | Admin RLS | ✅ Fixed | `venues_admin_all` policy applied; admin role set on profile |
+| Messages RLS | ✅ Fixed | `messages_update` policy applied (allows receivers to mark read) |
 | Seed data | ✅ Ready to run | `supabase/seed.sql` — 8 venues across Mumbai, Bangalore, Delhi. Replace `<YOUR_USER_UUID>` and run in SQL Editor. |
+| Admin email notifications | ✅ Built | Edge Function `supabase/functions/notify/`. See `supabase/DEPLOY.md` to deploy (needs Resend key). |
 | Razorpay payments | ❌ Blocked | Need Razorpay account + API keys before starting |
-| Admin email notifications | ✅ Built | Edge Function + Resend. See `supabase/DEPLOY.md` to deploy. |
-| Cloudflare Pages | ❌ Not started | Replace GitHub Pages |
-| Real-time messaging UI | ❌ Not started | Schema + `Messages` API ready, UI not built |
+| Cloudflare Pages | ⏸ Parked | Migrate only after site is fully tested. Plan in §9. |
 
 ---
 
@@ -38,14 +38,21 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 
 ```
 partyhouse/
-├── index.html       # 1,148 lines — entire SPA, all pages as divs
-├── app.js           # ~892 lines  — all UI logic, page routing, wizard
-├── supabase.js      # 568 lines  — all DB/auth calls, nav state
-├── styles.css       # 631 lines  — full design system
-├── schema.sql       # 261 lines  — Postgres schema + RLS + triggers
+├── index.html                          # ~1,340 lines — entire SPA, all pages as divs
+├── app.js                              # ~1,396 lines — all UI logic, page routing, wizard
+├── supabase.js                         # ~668 lines  — all DB/auth calls, Notify helper
+├── styles.css                          # ~755 lines  — full design system
+├── schema.sql                          # ~264 lines  — Postgres schema + RLS + triggers
 ├── favicon.svg
+├── supabase/
+│   ├── seed.sql                        # 8 seed venues — run in Supabase SQL Editor
+│   ├── DEPLOY.md                       # Edge Function deployment guide
+│   └── functions/
+│       └── notify/
+│           ├── index.ts                # Email Edge Function (new_venue / approved / rejected)
+│           └── config.toml
 └── .claude/
-    └── STATUS.md    # this file
+    └── STATUS.md                       # this file
 ```
 
 ### Pages in index.html (each is a `div.page#page-{id}`)
@@ -53,14 +60,16 @@ partyhouse/
 |---|---|
 | `home` | Hero search + featured venues + host CTA |
 | `search` | Filter panel + venue grid |
-| `listing` | Venue detail + booking widget |
-| `booking` | Multi-step booking flow (date/time/guests/occasion → summary → payment) |
+| `listing` | Venue detail + availability calendar + booking widget |
+| `booking` | Multi-step booking flow (summary → guest details → payment) |
 | `trips` | Guest's booking history |
 | `wishlist` | Saved venues |
-| `dashboard` | Host dashboard (their venues + bookings) |
+| `dashboard` | Host dashboard (their venues + bookings table) |
 | `new-listing` | 8-step venue listing wizard |
+| `messages` | Inbox sidebar + chat panel (real-time via Supabase) |
 | `auth` | Login / signup |
-| `admin` | Admin review panel |
+| `admin` | Admin review panel (pending / approved / rejected tabs) |
+| `editListingOverlay` | Edit listing modal (4-tab: Basics / Pricing / Rules & Amenities / Occasions) |
 
 ---
 
@@ -68,28 +77,22 @@ partyhouse/
 
 ### Tables
 - **profiles** — extends auth.users; fields: `full_name`, `phone`, `avatar_url`, `role` (guest/host/admin), `city`, `bio`
-- **venues** — `name`, `description`, `venue_type`, `city`, `address`, `capacity`, `price_per_hour`, `min_hours`, `cleaning_fee`, `security_deposit`, `amenities[]`, `occasions[]`, `photos[]`, `cover_emoji`, `is_active`, `is_instant_book`, `rating_avg`, `review_count`, `host_notes`
+- **venues** — `name`, `description`, `venue_type`, `city`, `address`, `capacity`, `price_per_hour`, `weekend_rate` (Sat/Sun override), `min_hours`, `cleaning_fee`, `security_deposit`, `amenities[]`, `occasions[]`, `photos[]`, `cover_emoji`, `is_active`, `is_instant_book`, `rating_avg`, `review_count`, `host_notes`
 - **bookings** — `venue_id`, `guest_id`, `party_date`, `start_time`, `hours`, `occasion`, `guests_count`, `total_price`, `status` (pending/confirmed/cancelled/completed), `confirmation_code`
 - **reviews** — `booking_id`, `venue_id`, `reviewer_id`, `rating`, `comment`
 - **wishlists** — `user_id`, `venue_id`
 - **messages** — `sender_id`, `receiver_id`, `venue_id`, `booking_id`, `content`, `read_at`
 - **payments** — `booking_id`, `razorpay_order_id`, `razorpay_payment_id`, `amount`, `status`
 
-### Key DB behaviors
+### Key DB behaviours
 - Profile auto-created on signup via `handle_new_user()` trigger
 - Booking `confirmation_code` auto-generated via trigger (format: `PH-MUM-2026-4821`)
 - `rating_avg` and `review_count` on venues auto-updated via `update_venue_rating()` trigger
 - All tables have RLS enabled
 
-### RLS policies (applied)
-- `venues`: public SELECT where `is_active = true`
-- `venues_admin_all`: admin users can SELECT/UPDATE/DELETE all venues regardless of `is_active`
-
 ---
 
 ## 5. Supabase JavaScript API (supabase.js)
-
-All DB calls go through these objects:
 
 ```js
 Auth.signUp(email, password, fullName)
@@ -103,16 +106,17 @@ Auth.requireAuth(action)   // shows toast + redirects to auth if not logged in
 Venues.getAll({ city, occasion, minCapacity, maxPrice, type })
 Venues.getById(id)
 Venues.getFeatured()
-Venues.create(venueData)   // sets host_id = currentUser.id
+Venues.create(venueData)
 Venues.update(id, updates)
 Venues.getHostVenues()
-Venues.uploadPhoto(file, venueId)  // Storage buckets now live ✅
+Venues.uploadPhoto(file, venueId)
 
 Bookings.create(venueId, { partyDate, startTime, hours, occasion, guestsCount, totalPrice, ... })
 Bookings.getMyBookings()
-Bookings.getHostBookings()
+Bookings.getHostBookings()       // ⚠ BUG — crashes if host has 0 venues (see §6)
 Bookings.updateStatus(bookingId, status)
 Bookings.cancel(bookingId)
+Bookings.getVenueAvailability(venueId)
 
 Reviews.getForVenue(venueId)
 Reviews.create(bookingId, venueId, rating, comment)
@@ -121,160 +125,121 @@ Wishlist.toggle(venueId, heartBtn)
 Wishlist.getAll()
 Wishlist.getIds()
 
-Messages.send(receiverId, content, venueId, bookingId)
+Messages.send(receiverId, content)
 Messages.getConversation(otherUserId)
+Messages.getInbox()
+Messages.getUnreadCount()
+Messages.markRead(senderId)
+Messages.subscribe(otherUserId, callback)
+
+Notify.venueApproved(venueId, adminNote)   // calls Edge Function
+Notify.venueRejected(venueId, reason)
 ```
 
-### Global state (supabase.js)
+### Global state
 ```js
 currentUser     // Supabase auth user object, null if logged out
 currentProfile  // profiles row, null if logged out
+selectedVenueData  // currently open venue object (app.js)
 ```
 
 ---
 
-## 6. Known Gaps & Bugs
+## 6. QA Findings — Fix These Next Session
 
-### Critical (must fix before launch)
-| # | Issue | Status |
-|---|---|---|
-| 1 | RLS blocks admin from reading inactive venues | ✅ Fixed — `venues_admin_all` policy applied |
-| 2 | `adminApprove()` had redundant no-op DB calls | ✅ Fixed — single fetch + update, modal closes cleanly |
-| 3 | Venue photos not stored | ✅ Fixed — Storage buckets created |
-| 4 | Booking payment not wired | ⏳ Blocked — need Razorpay account (see §8) |
-| 5 | Google OAuth redirect URI not added | ✅ Already done — URI was in Google Cloud Console |
+A full static code analysis was done on 2026-06-06. All 17 findings below are confirmed bugs — none are speculation.
 
-### Non-critical (post-launch)
-| # | Issue | Notes |
-|---|---|---|
-| 6 | No admin email on new listing | Needs Supabase Edge Function + Resend/SendGrid |
-| 7 | Messaging UI not built | `Messages` API ready, need chat page |
-| 8 | Host approval flow for bookings | Currently instant — host should be able to approve/deny |
-| 9 | No availability calendar | Bookings can double-stack on same date/time |
-| 10 | Weekend rate not applied in price calc | `wizData.weekend_rate` saved but `calcPrice()` doesn't use it |
+### Critical (fix first — data integrity or broken core flow)
 
----
+| # | Bug | Location | Fix |
+|---|---|---|---|
+| C1 | **Host can book their own venue** — no guard against `currentUser.id === host.id` | `startBooking()` app.js:335 | Add 2-line owner check before booking |
+| C2 | **Price mismatch in booking summary** — step 1 summary always shows weekday rate, even on weekends; `populateBookingSummary()` uses `v.price_per_hour` directly instead of `price.rate` from `calcPrice()` | `populateBookingSummary()` app.js:380 | Replace `v.price_per_hour` with `price.rate` |
+| C3 | **Admin pending tab shows rejected venues** — pending query is `.eq('is_active', false)` with no exclusion of `REJECTED` notes, so rejected venues appear in pending and can be re-approved accidentally | `adminTab()` app.js:1041 | Add `.not('host_notes', 'like', '%REJECTED%')` to pending query |
+| C4 | **Real-time message channel leaks on page navigation** — `msgRealtimeChannel` only cleaned up in `closeChatPanel()`, not on `goPage()`. Channel fires callbacks on dead DOM, exhausts Supabase realtime limits | `goPage()` app.js:67 | Add `db.removeChannel(msgRealtimeChannel)` at top of `goPage()` |
 
-## 7. Immediate Next Steps (in order)
+### High (fix before launch)
 
-### Step 1 — Seed first host account
-1. Sign up at the live site with a real email
-2. In Supabase → profiles → set `role` = `host`
-3. In SQL Editor, run the seed venue INSERT from schema.sql (replace YOUR-HOST-UUID)
+| # | Bug | Location | Fix |
+|---|---|---|---|
+| H1 | **Calendar blocks entire day if any booking exists** — even a 4hr morning booking marks the whole day red; guests can't book evening slots | `renderCalendar()` app.js:236 | Only mark day blocked if booking covers ≥18 hrs; rely on `hasTimeConflict()` for time-level accuracy |
+| H2 | **Edit listing zeros cleaning_fee / security_deposit on save** — `parseInt('') \|\| 0` overwrites existing values with 0 if host leaves those fields untouched | `saveEditListing()` app.js:698 | Change `\|\| 0` to `\|\| v.cleaning_fee \|\| 0` and `\|\| v.security_deposit \|\| 0` |
+| H3 | **getHostBookings() crashes with empty venues array** — `.in('venue_id', [])` throws a Postgres UUID error; new hosts with no venues see a broken dashboard | `Bookings.getHostBookings()` supabase.js:322 | Short-circuit return `[]` if `venueIds.length === 0` |
+| H4 | **No confirmation before booking cancel** — single misclick cancels a confirmed booking with no undo | `loadMyBookings()` app.js:455 | Wrap in `confirm()` dialog |
+| H5 | **Guest can book a past date via devtools** — calendar prevents UI clicks but doesn't validate the hidden `#bwDate` input value | `startBooking()` app.js:335 | Add `date < today` check after the empty-date guard |
+| H6 | **Re-review warning fires incorrectly on first open** — `editingVenueData` is null when the `input` event listeners attach at page load; first edit always shows the re-review banner | `app.js:626` | Add `if (!editingVenueData) return` at top of each listener |
+| H7 | **Earnings shows ₹NaNL if any booking has null total_price** — `reduce()` doesn't guard against null values | `loadDashboard()` app.js:493 | Change to `(s, b) => s + (b.total_price \|\| 0)` and show `—` for zero |
 
-### Step 2 — Razorpay integration
-Blocked on Razorpay account setup. See §8 for full plan.  
-Once you have keys: share the **Key ID** (`rzp_test_...`) and Claude will build the full integration.
+### Medium (UX gaps)
 
-### Step 3 — Messaging UI
-The `Messages` API is ready. Need a chat page in index.html + routing in app.js.
-
-### Step 4 — Migrate to Cloudflare Pages
-See §9 below.
-
-### Step 5 — Admin email notifications
-See §10 below.
+| # | Bug | Location | Fix |
+|---|---|---|---|
+| M1 | No back navigation from listing page | `page-listing` index.html | Add `← Back` button that calls `goPage('search')` with saved filters |
+| M2 | Wizard success screen shows client-generated code, not the DB confirmation code | `submitListingForReview()` app.js:1000 | Use `venue.confirmation_code` from the DB response |
+| M3 | Search filters reset when returning from listing page | `goPage()` app.js:78 | Pass `searchFilters` when calling `loadSearch()` from goPage |
+| M4 | `toggleAm()` mutates `wizData.amenities` even when called from edit listing modal | `toggleAm()` app.js:822 | Scope mutation to wizard context only |
+| M5 | Real-time channel name `'messages'` collides across tabs | `Messages.subscribe()` supabase.js:462 | Use unique name: `messages-${currentUser.id}-${Date.now()}` |
+| M6 | `showToast()` type `'warn'` has no colour mapping — border renders as `undefined` | `showToast()` supabase.js:478 | Add `warn: '#d97706'` to the colours map |
 
 ---
 
-## 8. Razorpay Integration Plan
+## 7. What Was Built (complete feature list)
 
-### What's needed
-- Razorpay account + API keys (Key ID + Key Secret)
-- A backend to create Razorpay orders (can't be done client-side — secret key exposure risk)
-- Recommended: **Supabase Edge Function** as the backend
+| Feature | Status |
+|---|---|
+| Full SPA routing (goPage) | ✅ |
+| Supabase auth — email + Google OAuth | ✅ |
+| Venue browse + search + filters | ✅ |
+| Venue detail page | ✅ |
+| Availability calendar (month-view, booked dates blocked, time conflict check) | ✅ |
+| Weekend rate pricing (Sat/Sun auto-switch, visual label) | ✅ |
+| Multi-step booking flow (3 steps) | ✅ |
+| Razorpay payment | ❌ Blocked on account |
+| My Bookings (trips page) | ✅ |
+| Wishlist / saved venues | ✅ |
+| Host Dashboard (venues + bookings table + metrics) | ✅ |
+| Edit Listing (4-tab modal, pre-filled, re-review on name/desc change) | ✅ |
+| 8-step venue listing wizard | ✅ |
+| Admin panel (pending/approved/rejected tabs, approve/reject/revoke) | ✅ |
+| Admin email notifications (Edge Function + Resend) | ✅ Built, needs deploy |
+| Messaging UI (inbox + chat + real-time + unread badge) | ✅ |
+| Contact Host button on listing page | ✅ |
+| Seed data (8 venues, 3 cities) | ✅ Ready to run |
+
+---
+
+## 8. Razorpay Integration Plan (when unblocked)
 
 ### Architecture
 ```
 Browser → Edge Function (create-order) → Razorpay API → returns order_id
 Browser loads Razorpay checkout with order_id
-User pays → Razorpay calls webhook → Edge Function (verify-payment) → updates payments table
+User pays → Razorpay webhook → Edge Function (verify-payment) → updates payments table
 ```
 
-### Files to change
-1. **supabase.js** — add `Payments.createOrder(bookingId, amount)` and `Payments.verify(paymentData)`
-2. **app.js** — wire `confirmPayment()` (currently placeholder) to call `Payments.createOrder`, open Razorpay modal, handle success/failure
-3. **New: `supabase/functions/create-order/index.ts`** — Edge Function
-4. **New: `supabase/functions/verify-payment/index.ts`** — Edge Function + webhook handler
+### Files to create/change
+1. `supabase.js` — add `Payments.createOrder(bookingId, amount)` and `Payments.verify(paymentData)`
+2. `app.js` — wire `confirmPayment()` to call `Payments.createOrder`, open Razorpay modal, handle success/failure
+3. New: `supabase/functions/create-order/index.ts`
+4. New: `supabase/functions/verify-payment/index.ts` (+ webhook handler)
 
-### Key Razorpay fields to capture (already in payments table)
-- `razorpay_order_id`
-- `razorpay_payment_id`
-- `amount` (in paise, multiply INR × 100)
-- `status`: pending → captured → refunded
-
-### app.js confirmPayment() current state
-```js
-// Currently just shows a toast — needs full Razorpay wiring
-async function confirmPayment() {
-  // TODO: call Payments.createOrder() → open Razorpay → on success update booking status
-}
-```
+When you have Razorpay keys, share the **Key ID** (`rzp_test_...`) and Claude will build the full integration.
 
 ---
 
-## 9. Cloudflare Pages Migration Plan
+## 9. Cloudflare Pages Migration Plan (post-testing)
 
-### Why migrate
-- GitHub Pages has aggressive CDN caching (caused deployment issues this session)
-- Cloudflare Pages has instant cache purge, better performance globally
-- Supports environment variables natively (needed for Razorpay keys)
+1. Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect GitHub → `ratishkp83/partyhouse`
+2. Build settings: Framework = None, Build command = (empty), Output = `/`
+3. Deploy → get URL like `partyhouse.pages.dev`
+4. In Supabase → Auth → URL Configuration → update Site URL + Redirect URLs
+5. Update Google OAuth Authorised redirect URIs to add new domain
 
-### Steps
-1. Go to https://dash.cloudflare.com → Workers & Pages → Create application → Pages
-2. Connect GitHub → select `ratishkp83/partyhouse`
-3. Build settings: Framework = None, Build command = (empty), Output = `/`
-4. Deploy → get URL like `partyhouse.pages.dev`
-5. Add custom domain if desired
-6. In Supabase → Auth → URL Configuration → update Site URL and Redirect URLs to new domain
-7. Update Google OAuth Authorised redirect URIs to add new domain's callback
-
-### No code changes needed
-The codebase uses no build step — pure static files. Cloudflare Pages serves it identically to GitHub Pages.
+No code changes needed — pure static files.
 
 ---
 
-## 10. Admin Email Notification Plan
-
-When a venue is submitted, the admin should get an email. This needs a Supabase Edge Function triggered by a database webhook.
-
-### Implementation
-1. Create Edge Function `notify-admin` that:
-   - Receives venue row as payload
-   - Sends email via Resend (https://resend.com — free tier: 3000 emails/month)
-   - Email contains: venue name, city, host name, phone, email, reference code
-2. In Supabase → Database → Webhooks → New webhook:
-   - Table: `venues`
-   - Event: `INSERT`
-   - URL: your Edge Function URL
-3. Add `RESEND_API_KEY` and `ADMIN_EMAIL` to Supabase Edge Function secrets
-
-### Edge Function skeleton
-```typescript
-// supabase/functions/notify-admin/index.ts
-import { serve } from 'https://deno.land/std/http/server.ts'
-
-serve(async (req) => {
-  const { record } = await req.json()
-  const hostLine = (record.host_notes || '').split('\n')[0]
-  
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'PartyHouse <noreply@partyhouse.in>',
-      to: Deno.env.get('ADMIN_EMAIL'),
-      subject: `🎉 New venue submitted: ${record.name} (${record.city})`,
-      html: `<h2>${record.name}</h2><p>${record.city} · ${record.venue_type}</p><p>${hostLine}</p><p>Review at: https://ratishkp83.github.io/partyhouse/</p>`
-    })
-  })
-  return new Response('ok')
-})
-```
-
----
-
-## 11. Design System Reference
+## 10. Design System Reference
 
 ```css
 /* Palette */
@@ -295,52 +260,39 @@ serve(async (req) => {
 --font-b: 'Inter'               /* body / UI */
 
 /* Border radius */
---r-sm:   6px
---r-md:   12px
---r-lg:   18px
---r-xl:   24px
---r-pill: 999px
-
-/* Shadows */
---sh-sm:   0 1px 4px rgba(26,20,16,.08)
---sh-md:   0 4px 20px rgba(26,20,16,.10)
---sh-lg:   0 12px 48px rgba(26,20,16,.14)
---sh-glow: 0 0 30px rgba(232,69,10,.14)
+--r-sm: 6px  --r-md: 12px  --r-lg: 18px  --r-xl: 24px  --r-pill: 999px
 ```
 
 ---
 
-## 12. How to Resume in a New Claude Session
+## 11. How to Resume in a New Claude Session
 
 Paste this at the start of the new session:
 
 > "I'm resuming work on PartyHouse, a party venue booking platform. GitHub: https://github.com/ratishkp83/partyhouse · Live: https://ratishkp83.github.io/partyhouse/ · Supabase: https://hxeskohikmtpzfrmovot.supabase.co · Please clone the repo and read `.claude/STATUS.md` before we continue."
 
-Then:
-1. Claude will `git clone` the repo and read this file
-2. You tell Claude what to work on (use the §7 priority list as a guide)
-3. Provide the GitHub token when Claude asks to push (create a new one at https://github.com/settings/tokens)
+Then tell Claude: **"Fix the QA bugs from §6 — start with the 4 Criticals, then the 7 Highs, then the 6 Mediums. Fix them all in one pass."**
 
-**GitHub token scope needed:** `repo` only. Create at: https://github.com/settings/tokens/new  
-**Token used this session:** `ghp_REVOKED_REPLACE_WITH_NEW_TOKEN` — **revoke this now** at https://github.com/settings/tokens
+**GitHub token scope needed:** `repo` only. Create at: https://github.com/settings/tokens/new
 
 ---
 
-## 13. Session History
+## 12. Session History
 
 | Session | Date | What was done |
 |---|---|---|
-| 1 | 2026-06 (earlier) | Initial build — full SPA, Supabase schema, auth, booking flow |
-| 2 | 2026-06-04 | Fixed Google OAuth UI bug (getSessionFromUrl v1 removal, onAuthStateChange SIGNED_IN handler) |
-| 3 | 2026-06-04 | Warm light theme, Plus Jakarta Sans fonts, visible Login/Signup nav buttons, tooltip z-index fix |
-| 4 | 2026-06-04 | Location autocomplete (80 Indian cities), guests number-only input, heroSearch() sync |
-| 5 | 2026-06-04 | Full 8-step venue listing wizard (type/location/details/rules/amenities/photos/pricing/host info), review workflow with is_active=false |
-| 6 | 2026-06-04 | Fixed: goPage('host') → goPage('new-listing'), null guards in goPage(), toggleSw dedup, startNewListing() reset function |
-| 7 | 2026-06-04 | Admin panel — pending/approved/rejected tabs, venue detail modal, approve/reject/revoke with audit trail, admin nav badge |
-| 8 | 2026-06-05 | Fixed all critical issues: admin RLS policy, admin role set, storage buckets created, adminApprove() simplified, duplicate closeAdminModal() removed |
-| 9 | 2026-06-05 | Messaging UI: inbox sidebar, chat panel, real-time via Supabase, unread badge, Contact Host button; added messages_update RLS policy |
-| 10 | 2026-06-05 | Availability calendar: month-view date picker, booked dates blocked (pink/strikethrough), start time picker, time-overlap conflict check in startBooking() |
-| 11 | 2026-06-05 | Weekend rate fix: added weekend_rate column to schema, calcPrice() applies it on Sat/Sun with "Weekend rate" label, selectCalDate() triggers recalc, rules object stripped from venue insert payload |
-| 12 | 2026-06-05 | Edit Listing: ✏️ Edit button on each venue card in Host Dashboard, 4-tab modal (Basics/Pricing/Rules & Amenities/Occasions), pre-filled from live venue data, saves via Venues.update(), triggers re-review if name/description changed on active listing |
-| 13 | 2026-06-05 | Admin notifications: notify Edge Function (supabase/functions/notify/index.ts), 3 email types (new_venue via DB webhook, venue_approved, venue_rejected), Resend templates, Notify helper in supabase.js, wired into adminApprove/adminReject |
-| 14 | 2026-06-06 | Seed data: supabase/seed.sql — 8 venues (Mumbai ×4, Bangalore ×2, Delhi ×2), all 7 venue types, weekend rates, ratings, full amenity/occasion sets |
+| 1 | 2026-06 | Initial build — full SPA, Supabase schema, auth, booking flow |
+| 2 | 2026-06-04 | Fixed Google OAuth UI bug |
+| 3 | 2026-06-04 | Warm light theme, Plus Jakarta Sans fonts, nav buttons, tooltip fix |
+| 4 | 2026-06-04 | Location autocomplete (80 Indian cities), guests input, heroSearch() sync |
+| 5 | 2026-06-04 | Full 8-step venue listing wizard |
+| 6 | 2026-06-04 | Fixed goPage('host') → goPage('new-listing'), null guards, toggle dedup |
+| 7 | 2026-06-04 | Admin panel — tabs, venue detail modal, approve/reject/revoke, nav badge |
+| 8 | 2026-06-05 | Fixed critical issues: admin RLS, storage buckets, adminApprove() simplified |
+| 9 | 2026-06-05 | Messaging UI: inbox, chat, real-time, unread badge, Contact Host button |
+| 10 | 2026-06-05 | Availability calendar: month-view, booked dates, start time picker, conflict check |
+| 11 | 2026-06-05 | Weekend rate: schema column, calcPrice() Sat/Sun logic, rules stripped from insert |
+| 12 | 2026-06-05 | Edit Listing: 4-tab modal, pre-filled from DB, re-review on name/desc change |
+| 13 | 2026-06-05 | Admin notifications: notify Edge Function, 3 email types, Resend templates |
+| 14 | 2026-06-06 | Seed data: 8 venues across Mumbai/Bangalore/Delhi, all venue types |
+| 15 | 2026-06-06 | QA: full static code analysis — 4 Critical, 7 High, 6 Medium bugs identified (see §6) |
