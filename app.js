@@ -830,10 +830,10 @@ async function openAdminModal(venueId) {
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
       <button class="btn-review" onclick="closeAdminModal()">Close</button>
       ${!v.is_active && !v.host_notes?.includes('REJECTED') ? `
-        <button class="btn-approve" onclick="adminApprove('${v.id}');closeAdminModal()">✅ Approve Listing</button>
-        <button class="btn-reject"  onclick="adminRejectPrompt('${v.id}');closeAdminModal()">❌ Reject Listing</button>
+        <button class="btn-approve" onclick="adminApprove('${v.id}')">✅ Approve Listing</button>
+        <button class="btn-reject"  onclick="adminRejectPrompt('${v.id}')">❌ Reject Listing</button>
       ` : ''}
-      ${v.is_active ? `<button class="btn-reject" onclick="adminRevoke('${v.id}');closeAdminModal()">Revoke Listing</button>` : ''}
+      ${v.is_active ? `<button class="btn-reject" onclick="adminRevoke('${v.id}')">Revoke Listing</button>` : ''}
     </div>`;
 
   document.getElementById('adminModal').style.display = 'block';
@@ -870,6 +870,7 @@ async function adminReject(venueId, reason) {
   const { error } = await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
   showToast('Venue rejected.', 'info');
+  closeAdminModal();
   loadAdminPanel();
 }
 
@@ -879,5 +880,6 @@ async function adminRevoke(venueId) {
   const updatedNotes = (v?.host_notes || '') + `\n\n⏸ REVOKED by admin on ${new Date().toLocaleDateString('en-IN')}`;
   await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
   showToast('Listing revoked.', 'info');
+  closeAdminModal();
   loadAdminPanel();
 }
