@@ -845,23 +845,16 @@ function closeAdminModal() {
 
 async function adminApprove(venueId) {
   const note = document.getElementById('adminReviewNote')?.value?.trim() || '';
-  const { error } = await db.from('venues').update({
-    is_active: true,
-    host_notes: db.rpc ? undefined : undefined, // preserve existing notes
-  }).eq('id', venueId);
 
+  const { data: v, error: fetchError } = await db.from('venues').select('host_notes').eq('id', venueId).single();
+  if (fetchError) { showToast('Error: ' + fetchError.message, 'error'); return; }
+
+  const updatedNotes = (v?.host_notes || '') + `\n\n✅ APPROVED by admin on ${new Date().toLocaleDateString('en-IN')}${note ? '\nAdmin note: ' + note : ''}`;
+  const { error } = await db.from('venues').update({ is_active: true, host_notes: updatedNotes }).eq('id', venueId);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
 
-  // Append approval record to host_notes
-  await db.from('venues').update({
-    host_notes: db.from ? undefined : undefined,
-  }).eq('id', venueId); // notes append handled below
-
-  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
-  const updatedNotes = (v?.host_notes || '') + `\n\n✅ APPROVED by admin on ${new Date().toLocaleDateString('en-IN')}${note ? '\nAdmin note: ' + note : ''}`;
-  await db.from('venues').update({ is_active: true, host_notes: updatedNotes }).eq('id', venueId);
-
   showToast('Venue approved and now live! ✅', 'success');
+  closeAdminModal();
   loadAdminPanel();
 }
 
