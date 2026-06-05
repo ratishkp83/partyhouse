@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-04  
+**Last updated:** 2026-06-05  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -23,10 +23,11 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 | GitHub Pages | ✅ Live | https://ratishkp83.github.io/partyhouse/ |
 | Supabase DB | ✅ Live | Schema deployed, RLS enabled |
 | Email auth | ✅ Working | Sign up / login functional |
-| Google OAuth | ⚠️ One step left | Add redirect URI in Google Cloud Console (see §7) |
-| Supabase Storage | ❌ Not created | Buckets `venue-photos` and `avatars` need to be created manually |
+| Google OAuth | ✅ Done | Redirect URI already in Google Cloud Console |
+| Supabase Storage | ✅ Done | Buckets `venue-photos` and `avatars` created |
+| Admin RLS | ✅ Fixed | `venues_admin_all` policy applied; admin role set on profile |
 | Seed data | ❌ Not done | No real venues in DB yet |
-| Razorpay payments | ❌ Not started | Schema ready (`payments` table), UI flow built but not wired |
+| Razorpay payments | ❌ Blocked | Need Razorpay account + API keys before starting |
 | Admin email notifications | ❌ Not started | Needs Supabase Edge Function |
 | Cloudflare Pages | ❌ Not started | Replace GitHub Pages |
 | Real-time messaging UI | ❌ Not started | Schema + `Messages` API ready, UI not built |
@@ -38,7 +39,7 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 ```
 partyhouse/
 ├── index.html       # 1,148 lines — entire SPA, all pages as divs
-├── app.js           # 890 lines  — all UI logic, page routing, wizard
+├── app.js           # ~892 lines  — all UI logic, page routing, wizard
 ├── supabase.js      # 568 lines  — all DB/auth calls, nav state
 ├── styles.css       # 631 lines  — full design system
 ├── schema.sql       # 261 lines  — Postgres schema + RLS + triggers
@@ -80,8 +81,9 @@ partyhouse/
 - `rating_avg` and `review_count` on venues auto-updated via `update_venue_rating()` trigger
 - All tables have RLS enabled
 
-### RLS notes
-- `venues`: anyone can SELECT where `is_active = true` — **admin cannot read inactive venues via client** (this is a known gap, see §6)
+### RLS policies (applied)
+- `venues`: public SELECT where `is_active = true`
+- `venues_admin_all`: admin users can SELECT/UPDATE/DELETE all venues regardless of `is_active`
 
 ---
 
@@ -104,7 +106,7 @@ Venues.getFeatured()
 Venues.create(venueData)   // sets host_id = currentUser.id
 Venues.update(id, updates)
 Venues.getHostVenues()
-Venues.uploadPhoto(file, venueId)  // Storage not yet set up
+Venues.uploadPhoto(file, venueId)  // Storage buckets now live ✅
 
 Bookings.create(venueId, { partyDate, startTime, hours, occasion, guestsCount, totalPrice, ... })
 Bookings.getMyBookings()
@@ -134,13 +136,13 @@ currentProfile  // profiles row, null if logged out
 ## 6. Known Gaps & Bugs
 
 ### Critical (must fix before launch)
-| # | Issue | Location | Fix needed |
-|---|---|---|---|
-| 1 | **RLS blocks admin from reading inactive venues** | Supabase SQL | Add policy: `venues_admin_select: using (auth.uid() in (select id from profiles where role='admin'))` |
-| 2 | **`adminApprove()` has redundant no-op DB calls** | app.js ~line 846 | Simplify to single `.update({ is_active: true, host_notes: updatedNotes })` |
-| 3 | **Venue photos not stored** | supabase.js `Venues.uploadPhoto` | Storage buckets need to be created first (see §7) |
-| 4 | **Booking payment not wired** | app.js `confirmPayment()` | Razorpay integration needed (see §8) |
-| 5 | **Google OAuth redirect URI not added** | Google Cloud Console | Add `https://hxeskohikmtpzfrmovot.supabase.co/auth/v1/callback` |
+| # | Issue | Status |
+|---|---|---|
+| 1 | RLS blocks admin from reading inactive venues | ✅ Fixed — `venues_admin_all` policy applied |
+| 2 | `adminApprove()` had redundant no-op DB calls | ✅ Fixed — single fetch + update, modal closes cleanly |
+| 3 | Venue photos not stored | ✅ Fixed — Storage buckets created |
+| 4 | Booking payment not wired | ⏳ Blocked — need Razorpay account (see §8) |
+| 5 | Google OAuth redirect URI not added | ✅ Already done — URI was in Google Cloud Console |
 
 ### Non-critical (post-launch)
 | # | Issue | Notes |
@@ -155,45 +157,23 @@ currentProfile  // profiles row, null if logged out
 
 ## 7. Immediate Next Steps (in order)
 
-### Step 1 — Fix admin RLS (5 min, Supabase SQL Editor)
-```sql
-create policy "venues_admin_all" on venues
-  for all using (
-    auth.uid() in (select id from profiles where role = 'admin')
-  );
-```
-
-### Step 2 — Set yourself as admin (Supabase Table Editor)
-1. Go to https://hxeskohikmtpzfrmovot.supabase.co → Table Editor → `profiles`
-2. Find your row (Google account `raty420`)
-3. Set `role` = `admin` → Save
-4. Log in → purple **⚙️ Admin** link appears in nav
-
-### Step 3 — Create Storage buckets (Supabase dashboard)
-1. Storage → New bucket → Name: `venue-photos` → Public: ON → Create
-2. Storage → New bucket → Name: `avatars` → Public: ON → Create
-3. Run in SQL Editor:
-```sql
-insert into storage.buckets (id, name, public) values ('venue-photos', 'venue-photos', true);
-insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
-```
-
-### Step 4 — Seed first host account
+### Step 1 — Seed first host account
 1. Sign up at the live site with a real email
 2. In Supabase → profiles → set `role` = `host`
 3. In SQL Editor, run the seed venue INSERT from schema.sql (replace YOUR-HOST-UUID)
 
-### Step 5 — Google OAuth (one remaining step)
-1. Go to https://console.cloud.google.com → APIs & Services → Credentials
-2. Click your OAuth 2.0 Client ID
-3. Under "Authorised redirect URIs" → Add: `https://hxeskohikmtpzfrmovot.supabase.co/auth/v1/callback`
-4. Save → test Google login on the live site
+### Step 2 — Razorpay integration
+Blocked on Razorpay account setup. See §8 for full plan.  
+Once you have keys: share the **Key ID** (`rzp_test_...`) and Claude will build the full integration.
 
-### Step 6 — Razorpay integration
-See §8 below for full implementation plan.
+### Step 3 — Messaging UI
+The `Messages` API is ready. Need a chat page in index.html + routing in app.js.
 
-### Step 7 — Migrate to Cloudflare Pages
+### Step 4 — Migrate to Cloudflare Pages
 See §9 below.
+
+### Step 5 — Admin email notifications
+See §10 below.
 
 ---
 
@@ -223,7 +203,7 @@ User pays → Razorpay calls webhook → Edge Function (verify-payment) → upda
 - `amount` (in paise, multiply INR × 100)
 - `status`: pending → captured → refunded
 
-### app.js confirmPayment() current state (line ~266)
+### app.js confirmPayment() current state
 ```js
 // Currently just shows a toast — needs full Razorpay wiring
 async function confirmPayment() {
@@ -357,4 +337,4 @@ Then:
 | 5 | 2026-06-04 | Full 8-step venue listing wizard (type/location/details/rules/amenities/photos/pricing/host info), review workflow with is_active=false |
 | 6 | 2026-06-04 | Fixed: goPage('host') → goPage('new-listing'), null guards in goPage(), toggleSw dedup, startNewListing() reset function |
 | 7 | 2026-06-04 | Admin panel — pending/approved/rejected tabs, venue detail modal, approve/reject/revoke with audit trail, admin nav badge |
-
+| 8 | 2026-06-05 | Fixed all critical issues: admin RLS policy, admin role set, storage buckets created, adminApprove() simplified to single DB call, duplicate closeAdminModal() calls removed from all admin actions |
