@@ -81,6 +81,7 @@ function goPage(id) {
   if (id === 'dashboard')    loadDashboard();
   if (id === 'new-listing')  startNewListing();
   if (id === 'admin')        loadAdminPanel();
+  if (id === 'messages')     loadMessages();
 }
 
 // ── Dropdown ──────────────────────────────────────────────────
@@ -882,4 +883,203 @@ async function adminRevoke(venueId) {
   showToast('Listing revoked.', 'info');
   closeAdminModal();
   loadAdminPanel();
+}
+
+// ── Messaging ──────────────────────────────────────────────────────────────────
+
+let activeConvoPartnerId  = null;
+let activeConvoPartner    = null;
+let msgRealtimeChannel    = null;
+let allConvos             = [];  // cached for search filtering
+
+async function loadMessages() {
+  if (!currentUser) {
+    document.getElementById('msgConvoList').innerHTML =
+      '<div class="msg-empty-state">Please <a onclick="goPage(\'auth\')" style="color:var(--accent);cursor:pointer">log in</a> to view your messages.</div>';
+    return;
+  }
+  document.getElementById('msgConvoList').innerHTML = '<div class="msg-empty-state">Loading…</div>';
+  allConvos = await Messages.getInbox();
+  renderConvoList(allConvos);
+
+  // Show unread badge on nav item
+  refreshMsgBadge();
+}
+
+function renderConvoList(convos) {
+  const list = document.getElementById('msgConvoList');
+  if (!convos.length) {
+    list.innerHTML = '<div class="msg-empty-state">No conversations yet.<br>Contact a host from any venue page to start chatting.</div>';
+    return;
+  }
+  list.innerHTML = convos.map(c => {
+    const name     = c.partner?.full_name || 'User';
+    const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const preview  = c.sender_id === currentUser.id ? `You: ${c.content}` : c.content;
+    const time     = formatMsgTime(c.created_at);
+    const unread   = c.sender_id !== currentUser.id && !c.read_at;
+    const isActive = activeConvoPartnerId === c.partnerId;
+    return `
+      <div class="msg-convo-item${isActive ? ' active' : ''}" onclick="openConvo('${c.partnerId}', ${JSON.stringify(c.partner).replace(/"/g, '&quot;')})">
+        <div class="msg-convo-av">${initials}</div>
+        <div class="msg-convo-body">
+          <div class="msg-convo-name">${name}</div>
+          <div class="msg-convo-preview">${escHtml(preview)}</div>
+        </div>
+        <div class="msg-convo-time">${time}</div>
+        ${unread ? '<div class="msg-unread-dot"></div>' : ''}
+      </div>`;
+  }).join('');
+}
+
+function filterConvos(q) {
+  if (!q.trim()) { renderConvoList(allConvos); return; }
+  const lq = q.toLowerCase();
+  renderConvoList(allConvos.filter(c => (c.partner?.full_name || '').toLowerCase().includes(lq) || c.content.toLowerCase().includes(lq)));
+}
+
+async function openConvo(partnerId, partner) {
+  activeConvoPartnerId = partnerId;
+  activeConvoPartner   = partner;
+
+  // Mobile: hide sidebar, show chat
+  document.getElementById('msgSidebar').classList.add('mobile-hidden');
+  document.getElementById('msgChat').classList.add('mobile-open');
+
+  // Update header
+  const name     = partner?.full_name || 'User';
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  document.getElementById('msgChatAv').textContent   = initials;
+  document.getElementById('msgChatName').textContent = name;
+  document.getElementById('msgChatSub').textContent  = '';
+
+  // Switch to active chat panel
+  document.getElementById('msgChatEmpty').style.display  = 'none';
+  document.getElementById('msgChatInner').style.display  = 'flex';
+
+  // Mark active convo in sidebar
+  renderConvoList(allConvos);
+
+  // Load messages
+  await loadChatMessages(partnerId);
+
+  // Mark as read
+  await Messages.markRead(partnerId);
+  refreshMsgBadge();
+
+  // Subscribe to real-time incoming messages
+  if (msgRealtimeChannel) db.removeChannel(msgRealtimeChannel);
+  msgRealtimeChannel = Messages.subscribe(partnerId, (newMsg) => {
+    if (newMsg.sender_id === partnerId || newMsg.receiver_id === partnerId) {
+      appendBubble(newMsg, false);
+      Messages.markRead(partnerId);
+      refreshMsgBadge();
+    }
+  });
+}
+
+async function loadChatMessages(partnerId) {
+  const bubbles = document.getElementById('msgBubbles');
+  bubbles.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:32px">Loading…</div>';
+  const msgs = await Messages.getConversation(partnerId);
+  if (!msgs.length) {
+    bubbles.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:32px">No messages yet. Say hello! 👋</div>';
+    return;
+  }
+  bubbles.innerHTML = '';
+  let lastDate = null;
+  for (const msg of msgs) {
+    const msgDate = new Date(msg.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (msgDate !== lastDate) {
+      bubbles.insertAdjacentHTML('beforeend', `<div class="msg-date-divider">${msgDate}</div>`);
+      lastDate = msgDate;
+    }
+    appendBubble(msg, msg.sender_id === currentUser.id);
+  }
+  scrollBubblesToBottom();
+}
+
+function appendBubble(msg, isMine) {
+  const bubbles  = document.getElementById('msgBubbles');
+  const name     = isMine ? (currentProfile?.full_name || 'You') : (activeConvoPartner?.full_name || 'User');
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const time     = new Date(msg.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  bubbles.insertAdjacentHTML('beforeend', `
+    <div class="msg-bubble-wrap ${isMine ? 'mine' : ''}">
+      <div class="msg-bubble-av" style="${isMine ? 'background:var(--accent);color:#fff' : ''}">${initials}</div>
+      <div>
+        <div class="msg-bubble ${isMine ? 'mine' : 'theirs'}">${escHtml(msg.content)}</div>
+        <div class="msg-bubble-time ${isMine ? 'mine' : ''}">${time}</div>
+      </div>
+    </div>`);
+  scrollBubblesToBottom();
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('msgInput');
+  const text  = input.value.trim();
+  if (!text || !activeConvoPartnerId) return;
+  input.value = '';
+  autoResizeMsgInput(input);
+  const msg = await Messages.send(activeConvoPartnerId, text);
+  if (msg) {
+    appendBubble(msg, true);
+    // Refresh inbox list
+    allConvos = await Messages.getInbox();
+    renderConvoList(allConvos);
+  }
+}
+
+function closeChatPanel() {
+  // Mobile: show sidebar, hide chat
+  document.getElementById('msgSidebar').classList.remove('mobile-hidden');
+  document.getElementById('msgChat').classList.remove('mobile-open');
+  activeConvoPartnerId = null;
+  document.getElementById('msgChatEmpty').style.display  = 'flex';
+  document.getElementById('msgChatInner').style.display  = 'none';
+  if (msgRealtimeChannel) { db.removeChannel(msgRealtimeChannel); msgRealtimeChannel = null; }
+}
+
+// Contact Host from listing page
+async function contactHost() {
+  if (!Auth.requireAuth('message a host')) return;
+  if (!selectedVenueData) return;
+  const host = selectedVenueData.host;
+  if (!host) { showToast('Host info unavailable', 'error'); return; }
+  if (host.id === currentUser.id) { showToast("That's your own listing!", 'info'); return; }
+  // Navigate to messages and open convo with host
+  goPage('messages');
+  // Small delay for page render
+  setTimeout(() => openConvo(host.id, host), 150);
+}
+
+async function refreshMsgBadge() {
+  const count = await Messages.getUnreadCount();
+  const item  = document.getElementById('navMsgItem');
+  if (item) item.textContent = count > 0 ? `💬 Messages 🔴${count}` : '💬 Messages';
+}
+
+function scrollBubblesToBottom() {
+  const b = document.getElementById('msgBubbles');
+  if (b) b.scrollTop = b.scrollHeight;
+}
+
+function autoResizeMsgInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatMsgTime(iso) {
+  const d    = new Date(iso);
+  const now  = new Date();
+  const diff = now - d;
+  if (diff < 60000)          return 'just now';
+  if (diff < 3600000)        return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000)       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  if (diff < 7 * 86400000)   return d.toLocaleDateString('en-IN', { weekday: 'short' });
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }

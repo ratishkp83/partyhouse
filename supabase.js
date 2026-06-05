@@ -61,6 +61,9 @@ function updateNavForUser(profile) {
     if (authBtns) authBtns.style.display = 'none';
     if (userMenu) userMenu.style.display  = 'block';
 
+    // Refresh unread message badge
+    if (typeof refreshMsgBadge === 'function') refreshMsgBadge();
+
     // Show/hide admin nav link
     let adminLink = document.getElementById('navAdminLink');
     if (profile.role === 'admin') {
@@ -401,6 +404,46 @@ const Messages = {
       .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`)
       .order('created_at', { ascending: true });
     return data || [];
+  },
+
+  // Get inbox: latest message per unique conversation partner
+  async getInbox() {
+    if (!currentUser) return [];
+    const { data } = await db
+      .from('messages')
+      .select(`*, sender:profiles!sender_id(id, full_name, avatar_url), receiver:profiles!receiver_id(id, full_name, avatar_url)`)
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+      .order('created_at', { ascending: false });
+    if (!data) return [];
+    // Deduplicate: keep only the latest message per conversation partner
+    const seen = new Map();
+    for (const msg of data) {
+      const partnerId = msg.sender_id === currentUser.id ? msg.receiver_id : msg.sender_id;
+      const partner   = msg.sender_id === currentUser.id ? msg.receiver  : msg.sender;
+      if (!seen.has(partnerId)) seen.set(partnerId, { ...msg, partner, partnerId });
+    }
+    return Array.from(seen.values());
+  },
+
+  // Count unread messages
+  async getUnreadCount() {
+    if (!currentUser) return 0;
+    const { count } = await db
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', currentUser.id)
+      .is('read_at', null);
+    return count || 0;
+  },
+
+  // Mark messages from a sender as read
+  async markRead(senderId) {
+    if (!currentUser) return;
+    await db.from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('receiver_id', currentUser.id)
+      .eq('sender_id', senderId)
+      .is('read_at', null);
   },
 
   // Real-time: subscribe to new messages

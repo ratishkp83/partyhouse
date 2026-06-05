@@ -223,6 +223,7 @@ create policy "messages_select" on messages for select using (
   auth.uid() = sender_id or auth.uid() = receiver_id
 );
 create policy "messages_insert" on messages for insert with check (auth.uid() = sender_id);
+create policy "messages_update" on messages for update using (auth.uid() = receiver_id);  -- allows receiver to mark read_at
 
 -- payments: guest or host of venue can see
 create policy "payments_select" on payments for select using (
