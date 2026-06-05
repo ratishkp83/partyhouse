@@ -1182,6 +1182,148 @@
     </div>
   </div>
 
+  <!-- ===== EDIT LISTING MODAL ===== -->
+  <div class="modal-overlay" id="editListingOverlay" onclick="closeEditListing(event)" style="display:none">
+    <div class="modal-box edit-listing-modal" onclick="event.stopPropagation()">
+      <div class="edit-modal-header">
+        <div>
+          <div style="font-family:var(--font-d);font-size:20px;font-weight:800;letter-spacing:-.3px">Edit Listing</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px" id="editListingSubtitle">Update your venue details</div>
+        </div>
+        <button onclick="closeEditListing()" class="modal-close-btn">✕</button>
+      </div>
+
+      <div class="edit-modal-body">
+        <!-- Tabs -->
+        <div class="edit-tabs">
+          <div class="edit-tab active" onclick="switchEditTab(this,'edit-basics')">Basics</div>
+          <div class="edit-tab" onclick="switchEditTab(this,'edit-pricing')">Pricing</div>
+          <div class="edit-tab" onclick="switchEditTab(this,'edit-rules')">Rules & Amenities</div>
+          <div class="edit-tab" onclick="switchEditTab(this,'edit-occasions')">Occasions</div>
+        </div>
+
+        <!-- Tab: Basics -->
+        <div class="edit-tab-panel active" id="edit-basics">
+          <div class="edit-notice" id="editReviewNotice" style="display:none">
+            ⚠️ Editing the name or description will send your listing back for admin review before going live again.
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Venue Name *</label>
+            <input class="form-input" type="text" id="editName" placeholder="Venue name">
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Description *</label>
+            <textarea class="form-input" id="editDesc" rows="5" style="resize:vertical;line-height:1.6" placeholder="Describe your venue..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="wiz-label">City *</label>
+              <input class="form-input" type="text" id="editCity" placeholder="Mumbai">
+            </div>
+            <div class="form-group">
+              <label class="wiz-label">Address</label>
+              <input class="form-input" type="text" id="editAddress" placeholder="Area, building, landmark...">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="wiz-label">Max capacity (guests)</label>
+              <input class="form-input" type="number" id="editCapacity" min="2" max="1000" placeholder="50">
+            </div>
+            <div class="form-group">
+              <label class="wiz-label">Minimum booking hours</label>
+              <input class="form-input" type="number" id="editMinHours" min="1" max="24" placeholder="4">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="wiz-label">Cover emoji</label>
+            <input class="form-input" type="text" id="editEmoji" maxlength="4" placeholder="🎉" style="font-size:22px;width:80px">
+          </div>
+        </div>
+
+        <!-- Tab: Pricing -->
+        <div class="edit-tab-panel" id="edit-pricing" style="display:none">
+          <div class="pricing-row">
+            <div><label>Base hourly rate (₹) *</label><small>Standard weekday rate per hour</small></div>
+            <input class="price-input" type="number" id="editPrice" min="500" placeholder="₹">
+          </div>
+          <div class="pricing-row">
+            <div><label>Weekend rate (₹) <span style="font-weight:400;color:var(--muted)">(Fri–Sun)</span></label><small>Leave blank to use base rate</small></div>
+            <input class="price-input" type="number" id="editWeekendRate" min="500" placeholder="₹">
+          </div>
+          <div class="pricing-row">
+            <div><label>Cleaning & setup fee (₹)</label><small>One-time charge per booking</small></div>
+            <input class="price-input" type="number" id="editCleaning" min="0" placeholder="₹">
+          </div>
+          <div class="pricing-row" style="border-bottom:none">
+            <div><label>Security deposit (₹)</label><small>Refundable after successful event</small></div>
+            <input class="price-input" type="number" id="editDeposit" min="0" placeholder="₹">
+          </div>
+        </div>
+
+        <!-- Tab: Rules & Amenities -->
+        <div class="edit-tab-panel" id="edit-rules" style="display:none">
+          <div style="margin-bottom:20px">
+            <label class="wiz-label" style="display:block;margin-bottom:12px">House rules</label>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">Alcohol allowed</div></div><div class="toggle-sw" id="esw-alcohol" onclick="toggleSw('esw-alcohol')"></div></div>
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">Outside catering allowed</div></div><div class="toggle-sw" id="esw-catering" onclick="toggleSw('esw-catering')"></div></div>
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">Smoking allowed</div></div><div class="toggle-sw" id="esw-smoking" onclick="toggleSw('esw-smoking')"></div></div>
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">Pets allowed</div></div><div class="toggle-sw" id="esw-pets" onclick="toggleSw('esw-pets')"></div></div>
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">18+ only events</div></div><div class="toggle-sw" id="esw-adults" onclick="toggleSw('esw-adults')"></div></div>
+              <div class="filter-toggle"><div><div style="font-size:14px;font-weight:500">Instant booking</div></div><div class="toggle-sw" id="esw-instant" onclick="toggleSw('esw-instant')"></div></div>
+            </div>
+          </div>
+          <div>
+            <label class="wiz-label" style="display:block;margin-bottom:10px">Amenities</label>
+            <div class="amenity-check-grid" id="editAmenityGrid">
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎵</div><span>DJ / Sound</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎤</div><span>Karaoke</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍿</div><span>Projector / Screen</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎮</div><span>Games Area</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">💡</div><span>Party Lights</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🎊</div><span>Basic Décor</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📷</div><span>Photo Booth</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🕯️</div><span>Ambience / LED</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍾</div><span>Bar Setup</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🍽</div><span>Catering</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔥</div><span>BBQ / Grill</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">☕</div><span>Pantry / Kitchen</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🏊</div><span>Pool</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🅿</div><span>Parking</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">📶</div><span>High-speed WiFi</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">❄️</div><span>AC / Climate ctrl</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">♿</div><span>Wheelchair access</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🔒</div><span>Private / Gated</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🛁</div><span>Changing rooms</span></div>
+              <div class="am-check" onclick="toggleAm(this)"><div class="am-icon">🌿</div><span>Garden / Lawn</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Occasions -->
+        <div class="edit-tab-panel" id="edit-occasions" style="display:none">
+          <label class="wiz-label" style="display:block;margin-bottom:12px">Occasions you welcome</label>
+          <div class="filter-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="editOccasionGrid">
+            <label class="filter-check occ-check"><input type="checkbox" value="Couple"> 💑 Couple / Romantic</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Family"> 👨‍👩‍👧‍👦 Family parties</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Birthday"> 🎂 Birthdays</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Group"> 🎉 Group events</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Anniversary"> 💍 Anniversaries</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Corporate"> 🎪 Corporate events</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Pool Party"> 🏊 Pool parties</label>
+            <label class="filter-check occ-check"><input type="checkbox" value="Night Out"> 🍾 Night out / Club style</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-modal-footer">
+        <button class="back-btn" onclick="closeEditListing()">Cancel</button>
+        <button class="next-btn" style="width:auto;padding:13px 32px" id="editSaveBtn" onclick="saveEditListing()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== ADMIN PANEL ===== -->
   <div class="page" id="page-admin">
     <div class="wrap" style="padding:40px 24px;max-width:1100px;margin:0 auto">

@@ -528,15 +528,194 @@ async function loadDashboard() {
   const venueList = document.getElementById('dashVenueList');
   if (venueList) {
     venueList.innerHTML = hostVenues.length ? hostVenues.map(v => `
-      <div style="display:flex;gap:12px;align-items:center;cursor:pointer;margin-bottom:14px" onclick="openVenue('${v.id}')">
-        <div style="width:48px;height:48px;border-radius:var(--r-md);background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${v.cover_emoji||'🎉'}</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${v.name}</div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+        <div style="width:48px;height:48px;border-radius:var(--r-md);background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;cursor:pointer" onclick="openVenue('${v.id}')">${v.cover_emoji||'🎉'}</div>
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="openVenue('${v.id}')">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.name}</div>
           <div style="font-size:12px;color:var(--muted)">₹${v.price_per_hour.toLocaleString('en-IN')}/hr · Max ${v.capacity} · ⭐ ${v.rating_avg||'New'}</div>
         </div>
-        <span class="status-badge status-confirmed">${v.is_active?'Active':'Draft'}</span>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <span class="status-badge ${v.is_active?'status-confirmed':'status-pending'}">${v.is_active?'Active':'Pending'}</span>
+          <button onclick="openEditListing('${v.id}')" data-tip="Edit this listing"
+            style="font-size:12px;padding:4px 10px;border-radius:var(--r-pill);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;color:var(--text);font-weight:500;transition:border-color .15s"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            ✏️ Edit
+          </button>
+        </div>
       </div>`).join('') :
       '<div style="color:var(--muted);font-size:13px">No venues yet. <a onclick="goPage(\'new-listing\')" style="color:var(--accent);cursor:pointer">Add one →</a></div>';
+  }
+}
+
+// ── Edit Listing ──────────────────────────────────────────────
+let editingVenueId   = null;
+let editingVenueData = null;
+
+async function openEditListing(venueId) {
+  editingVenueId = venueId;
+  // Fetch latest data fresh
+  editingVenueData = await Venues.getById(venueId);
+  if (!editingVenueData) { showToast('Could not load venue', 'error'); return; }
+
+  const v = editingVenueData;
+  document.getElementById('editListingSubtitle').textContent = v.name;
+
+  // -- Basics --
+  document.getElementById('editName').value     = v.name     || '';
+  document.getElementById('editDesc').value     = v.description || '';
+  document.getElementById('editCity').value     = v.city     || '';
+  document.getElementById('editAddress').value  = v.address  || '';
+  document.getElementById('editCapacity').value = v.capacity || '';
+  document.getElementById('editMinHours').value = v.min_hours || '';
+  document.getElementById('editEmoji').value    = v.cover_emoji || '🎉';
+
+  // -- Pricing --
+  document.getElementById('editPrice').value       = v.price_per_hour  || '';
+  document.getElementById('editWeekendRate').value = v.weekend_rate     || '';
+  document.getElementById('editCleaning').value    = v.cleaning_fee     || '';
+  document.getElementById('editDeposit').value     = v.security_deposit || '';
+
+  // -- Rules -- (parsed from host_notes since rules aren't in their own columns)
+  const notes = v.host_notes || '';
+  const rulesLine = notes.split('\n').find(l => l.startsWith('Rules:')) || '';
+  const getRule = (key) => rulesLine.includes(`${key}=true`);
+  setSw('esw-alcohol',  getRule('alcohol'));
+  setSw('esw-catering', getRule('catering'));
+  setSw('esw-smoking',  getRule('smoking'));
+  setSw('esw-pets',     getRule('pets'));
+  setSw('esw-adults',   getRule('adults_only'));
+  setSw('esw-instant',  v.is_instant_book || false);
+
+  // -- Amenities --
+  const amenities = v.amenities || [];
+  document.querySelectorAll('#editAmenityGrid .am-check').forEach(el => {
+    const label = el.querySelector('span')?.textContent?.trim();
+    el.classList.toggle('sel', amenities.includes(label));
+  });
+
+  // -- Occasions --
+  const occasions = v.occasions || [];
+  document.querySelectorAll('#editOccasionGrid input[type=checkbox]').forEach(cb => {
+    cb.checked = occasions.includes(cb.value);
+  });
+
+  // Reset to first tab
+  switchEditTab(document.querySelector('.edit-tab'), 'edit-basics');
+  document.getElementById('editReviewNotice').style.display = 'none';
+
+  // Show modal
+  document.getElementById('editListingOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditListing(e) {
+  if (e && e.target !== document.getElementById('editListingOverlay')) return;
+  document.getElementById('editListingOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function switchEditTab(el, panelId) {
+  document.querySelectorAll('.edit-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.edit-tab-panel').forEach(p => p.style.display = 'none');
+  el.classList.add('active');
+  const panel = document.getElementById(panelId);
+  if (panel) panel.style.display = 'block';
+}
+
+// Watch name/desc for changes to show re-review notice
+['editName','editDesc'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    const v = editingVenueData;
+    const changed = el.id === 'editName'
+      ? el.value.trim() !== (v?.name || '')
+      : el.value.trim() !== (v?.description || '');
+    if (changed && v?.is_active) {
+      document.getElementById('editReviewNotice').style.display = 'block';
+    } else {
+      const nameChanged = document.getElementById('editName').value.trim() !== (v?.name || '');
+      const descChanged = document.getElementById('editDesc').value.trim() !== (v?.description || '');
+      if (!nameChanged && !descChanged) document.getElementById('editReviewNotice').style.display = 'none';
+    }
+  });
+});
+
+function setSw(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (on) el.classList.add('on'); else el.classList.remove('on');
+}
+
+async function saveEditListing() {
+  if (!editingVenueId || !editingVenueData) return;
+  const v    = editingVenueData;
+  const btn  = document.getElementById('editSaveBtn');
+  btn.textContent = 'Saving…';
+  btn.disabled    = true;
+
+  const name    = document.getElementById('editName').value.trim();
+  const desc    = document.getElementById('editDesc').value.trim();
+
+  if (!name)  { showToast('Venue name is required', 'error'); btn.textContent = 'Save Changes'; btn.disabled = false; return; }
+  if (!desc)  { showToast('Description is required', 'error'); btn.textContent = 'Save Changes'; btn.disabled = false; return; }
+
+  // Check if sensitive fields changed — requires re-review
+  const needsReview = v.is_active && (name !== v.name || desc !== v.description);
+
+  // Collect amenities
+  const amenities = Array.from(document.querySelectorAll('#editAmenityGrid .am-check.sel'))
+    .map(el => el.querySelector('span')?.textContent?.trim()).filter(Boolean);
+
+  // Collect occasions
+  const occasions = Array.from(document.querySelectorAll('#editOccasionGrid input:checked'))
+    .map(cb => cb.value);
+
+  // Reconstruct rules for host_notes audit trail
+  const rules = {
+    alcohol:    document.getElementById('esw-alcohol')?.classList.contains('on'),
+    catering:   document.getElementById('esw-catering')?.classList.contains('on'),
+    smoking:    document.getElementById('esw-smoking')?.classList.contains('on'),
+    pets:       document.getElementById('esw-pets')?.classList.contains('on'),
+    adults_only:document.getElementById('esw-adults')?.classList.contains('on'),
+  };
+  const rulesLine = `Rules: alcohol=${rules.alcohol}, catering=${rules.catering}, smoking=${rules.smoking}, pets=${rules.pets}, adults_only=${rules.adults_only}`;
+
+  // Preserve original host_notes but update the rules line
+  const existingNotes = v.host_notes || '';
+  const updatedNotes  = existingNotes.replace(/Rules:.*/, rulesLine) +
+    (needsReview ? `\n\n✏️ EDITED by host on ${new Date().toLocaleDateString('en-IN')} — sent for re-review` : '');
+
+  const updates = {
+    name,
+    description:      desc,
+    city:             document.getElementById('editCity').value.trim()    || v.city,
+    address:          document.getElementById('editAddress').value.trim() || v.address,
+    capacity:         parseInt(document.getElementById('editCapacity').value)    || v.capacity,
+    min_hours:        parseInt(document.getElementById('editMinHours').value)    || v.min_hours,
+    cover_emoji:      document.getElementById('editEmoji').value.trim()          || v.cover_emoji,
+    price_per_hour:   parseInt(document.getElementById('editPrice').value)       || v.price_per_hour,
+    weekend_rate:     parseInt(document.getElementById('editWeekendRate').value) || null,
+    cleaning_fee:     parseInt(document.getElementById('editCleaning').value)    || 0,
+    security_deposit: parseInt(document.getElementById('editDeposit').value)     || 0,
+    is_instant_book:  document.getElementById('esw-instant')?.classList.contains('on') || false,
+    amenities,
+    occasions,
+    host_notes: updatedNotes,
+    ...(needsReview ? { is_active: false } : {}),
+  };
+
+  const result = await Venues.update(editingVenueId, updates);
+  btn.textContent = 'Save Changes';
+  btn.disabled    = false;
+
+  if (result) {
+    closeEditListing();
+    loadDashboard();
+    if (needsReview) {
+      showToast('Listing updated and sent for re-review 📋', 'info');
+    } else {
+      showToast('Listing updated ✅', 'success');
+    }
   }
 }
 

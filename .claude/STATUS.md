@@ -341,3 +341,4 @@ Then:
 | 9 | 2026-06-05 | Messaging UI: inbox sidebar, chat panel, real-time via Supabase, unread badge, Contact Host button; added messages_update RLS policy |
 | 10 | 2026-06-05 | Availability calendar: month-view date picker, booked dates blocked (pink/strikethrough), start time picker, time-overlap conflict check in startBooking() |
 | 11 | 2026-06-05 | Weekend rate fix: added weekend_rate column to schema, calcPrice() applies it on Sat/Sun with "Weekend rate" label, selectCalDate() triggers recalc, rules object stripped from venue insert payload |
+| 12 | 2026-06-05 | Edit Listing: ✏️ Edit button on each venue card in Host Dashboard, 4-tab modal (Basics/Pricing/Rules & Amenities/Occasions), pre-filled from live venue data, saves via Venues.update(), triggers re-review if name/description changed on active listing |
