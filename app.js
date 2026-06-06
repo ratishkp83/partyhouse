@@ -499,7 +499,7 @@ async function loadMyBookings() {
 
   grid.innerHTML = bookings.map(b => `
     <div class="trip-card">
-      <div class="trip-img-area">${b.venue?.cover_emoji || '🎉'}</div>
+      <div class="trip-img-area">${escHtml(b.venue?.cover_emoji || '🎉')}</div>
       <div class="trip-card-body">
         <h3>${escHtml(b.venue?.name || 'Venue')}</h3>
         <p>${b.venue?.city || ''} · ${new Date(b.party_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${b.hours} hrs</p>
@@ -593,7 +593,7 @@ async function loadDashboard() {
   if (venueList) {
     venueList.innerHTML = hostVenues.length ? hostVenues.map(v => `
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
-        <div style="width:48px;height:48px;border-radius:var(--r-md);background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;cursor:pointer" onclick="openVenue('${v.id}')">${v.cover_emoji||'🎉'}</div>
+        <div style="width:48px;height:48px;border-radius:var(--r-md);background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;cursor:pointer" onclick="openVenue('${v.id}')">${escHtml(v.cover_emoji||'🎉')}</div>
         <div style="flex:1;min-width:0;cursor:pointer" onclick="openVenue('${v.id}')">
           <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(v.name)}</div>
           <div style="font-size:12px;color:var(--muted)">₹${v.price_per_hour.toLocaleString('en-IN')}/hr · Max ${v.capacity} · ⭐ ${v.rating_avg||'New'}</div>
@@ -757,7 +757,7 @@ async function saveEditListing() {
     address:          document.getElementById('editAddress').value.trim() || v.address,
     capacity:         parseInt(document.getElementById('editCapacity').value)    || v.capacity,
     min_hours:        parseInt(document.getElementById('editMinHours').value)    || v.min_hours,
-    cover_emoji:      document.getElementById('editEmoji').value.trim()          || v.cover_emoji,
+    cover_emoji:      sanitiseEmoji(document.getElementById('editEmoji').value.trim() || v.cover_emoji),
     price_per_hour:   parseInt(document.getElementById('editPrice').value)       || v.price_per_hour,
     weekend_rate:     parseInt(document.getElementById('editWeekendRate').value) || null,
     cleaning_fee:     parseInt(document.getElementById('editCleaning').value)    || v.cleaning_fee     || 0,
@@ -1050,7 +1050,7 @@ async function submitListingForReview() {
       document.getElementById('wizPin')?.value?.trim(),
       document.getElementById('wizState')?.value,
     ].filter(Boolean).join(', '),
-    cover_emoji:   document.querySelector('.type-card.sel .tc-icon')?.textContent || '🎉',
+    cover_emoji:   sanitiseEmoji(document.querySelector('.type-card.sel .tc-icon')?.textContent || '🎉'),
     badge_label:   (document.querySelector('.type-card.sel .tc-icon')?.textContent || '') + ' ' + wizData.venue_type,
     is_active:     false,        // Stays off until admin approves
     venue_status:  'pending',     // Explicit status — never rely on host_notes string-matching
@@ -1151,7 +1151,7 @@ async function adminTab(tab) {
     <div class="admin-venue-card ${status}">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
-          <span style="font-size:20px">${v.cover_emoji || '🎉'}</span>
+          <span style="font-size:20px">${escHtml(v.cover_emoji || '🎉')}</span>
           <strong style="font-size:16px">${escHtml(v.name || 'Unnamed venue')}</strong>
           <span class="admin-badge ${status}">${status}</span>
         </div>
@@ -1472,6 +1472,16 @@ function autoResizeMsgInput(el) {
 
 function escHtml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Sanitise cover_emoji: allow only a single emoji character (max 8 chars).
+// Rejects any HTML/script injection while permitting multi-codepoint emoji (e.g. 🎉, 👨‍👩‍👧).
+function sanitiseEmoji(val) {
+  const s = (val || '🎉').trim();
+  // Strip any HTML tags entirely
+  const stripped = s.replace(/<[^>]*>/g, '').trim();
+  // Accept only if short enough to be a single emoji (real emoji are 1–4 chars, some ZWJ sequences up to ~8)
+  return (stripped.length > 0 && stripped.length <= 8) ? stripped : '🎉';
 }
 
 function formatMsgTime(iso) {

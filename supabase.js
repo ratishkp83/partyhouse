@@ -543,7 +543,7 @@ function venueCard(v, savedIds = []) {
   return `
     <div class="prop-card" onclick="openVenue('${v.id}')" data-tip="View ${escHtml(v.name)}">
       <div class="prop-img">
-        <div class="prop-img-placeholder" style="font-size:52px">${v.cover_emoji || '🎉'}</div>
+        <div class="prop-img-placeholder" style="font-size:52px">${escHtml(v.cover_emoji || '🎉')}</div>
         <div class="card-type-badge">${escHtml(v.badge_label || v.venue_type)}</div>
         <button class="heart-btn ${isSaved ? 'saved' : ''}"
           onclick="event.stopPropagation(); Wishlist.toggle('${v.id}', this)"
