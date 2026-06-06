@@ -611,14 +611,14 @@ async function loadVenuePage(venueId) {
       revGrid.innerHTML = reviews.slice(0,4).map(r => `
         <div class="review-card">
           <div class="reviewer">
-            <div class="reviewer-av">${(r.reviewer?.full_name||'?')[0].toUpperCase()}</div>
+            <div class="reviewer-av">${escHtml((r.reviewer?.full_name||'?')[0].toUpperCase())}</div>
             <div>
-              <div class="reviewer-name">${r.reviewer?.full_name || 'Guest'}</div>
+              <div class="reviewer-name">${escHtml(r.reviewer?.full_name || 'Guest')}</div>
               <div class="reviewer-date">${new Date(r.created_at).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</div>
             </div>
           </div>
           <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
-          <div class="review-text" style="margin-top:8px">${r.comment || ''}</div>
+          <div class="review-text" style="margin-top:8px">${escHtml(r.comment || '')}</div>
         </div>`).join('');
     } else {
       revGrid.innerHTML = '<div style="color:var(--muted);font-size:13px">No reviews yet — be the first to party here!</div>';

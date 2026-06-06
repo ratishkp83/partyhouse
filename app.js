@@ -471,7 +471,7 @@ async function loadMyBookings() {
     <div class="trip-card">
       <div class="trip-img-area">${b.venue?.cover_emoji || '🎉'}</div>
       <div class="trip-card-body">
-        <h3>${b.venue?.name || 'Venue'}</h3>
+        <h3>${escHtml(b.venue?.name || 'Venue')}</h3>
         <p>${b.venue?.city || ''} · ${new Date(b.party_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${b.hours} hrs</p>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
           ${b.occasion || 'Party'} · ${b.guests_count} guests · ₹${b.total_price.toLocaleString('en-IN')}
@@ -534,10 +534,10 @@ async function loadDashboard() {
       const statusClass = { confirmed:'status-confirmed', pending:'status-pending', cancelled:'status-cancelled', completed:'status-confirmed' };
       tbody.innerHTML = bookings.slice(0,8).map(b => `
         <tr>
-          <td><strong>${b.guest?.full_name || 'Guest'}</strong></td>
-          <td>${b.venue?.name || ''}</td>
+          <td><strong>${escHtml(b.guest?.full_name || 'Guest')}</strong></td>
+          <td>${escHtml(b.venue?.name || '')}</td>
           <td>${new Date(b.party_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
-          <td>${b.occasion || '—'}</td>
+          <td>${escHtml(b.occasion || '—')}</td>
           <td>₹${b.total_price.toLocaleString('en-IN')}</td>
           <td>
             <span class="status-badge ${statusClass[b.status]||'status-pending'}">${b.status}</span>
@@ -558,7 +558,7 @@ async function loadDashboard() {
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
         <div style="width:48px;height:48px;border-radius:var(--r-md);background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;cursor:pointer" onclick="openVenue('${v.id}')">${v.cover_emoji||'🎉'}</div>
         <div style="flex:1;min-width:0;cursor:pointer" onclick="openVenue('${v.id}')">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.name}</div>
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(v.name)}</div>
           <div style="font-size:12px;color:var(--muted)">₹${v.price_per_hour.toLocaleString('en-IN')}/hr · Max ${v.capacity} · ⭐ ${v.rating_avg||'New'}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -1100,17 +1100,17 @@ async function adminTab(tab) {
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
           <span style="font-size:20px">${v.cover_emoji || '🎉'}</span>
-          <strong style="font-size:16px">${v.name || 'Unnamed venue'}</strong>
+          <strong style="font-size:16px">${escHtml(v.name || 'Unnamed venue')}</strong>
           <span class="admin-badge ${status}">${status}</span>
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:4px">
-          📍 ${v.city || '—'} &nbsp;·&nbsp; ${v.venue_type || '—'} &nbsp;·&nbsp; 👥 Up to ${v.capacity || '?'}
+          📍 ${escHtml(v.city || '—')} &nbsp;·&nbsp; ${escHtml(v.venue_type || '—')} &nbsp;·&nbsp; 👥 Up to ${v.capacity || '?'}
           &nbsp;·&nbsp; ₹${(v.price_per_hour||0).toLocaleString('en-IN')}/hr
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">
           🗓 Submitted ${submitted} &nbsp;·&nbsp; 🧑 ${v.host?.full_name || 'Unknown host'}
         </div>
-        <div style="font-size:12px;color:var(--muted)">${hostLine}</div>
+        <div style="font-size:12px;color:var(--muted)">${escHtml(hostLine)}</div>
       </div>
       <div class="admin-actions">
         <button class="btn-review" onclick="openAdminModal('${v.id}')">View Details</button>
@@ -1132,8 +1132,8 @@ async function openAdminModal(venueId) {
 
   const notes = (v.host_notes || '').split('\n').filter(Boolean);
   document.getElementById('adminModalContent').innerHTML = `
-    <div style="font-size:22px;font-weight:800;margin-bottom:4px">${v.cover_emoji || '🎉'} ${v.name}</div>
-    <div style="color:var(--muted);font-size:13px;margin-bottom:20px">${v.city} · ${v.venue_type} · Submitted ${new Date(v.created_at).toLocaleDateString('en-IN')}</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:4px">${v.cover_emoji || '🎉'} ${escHtml(v.name)}</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:20px">${escHtml(v.city)} · ${escHtml(v.venue_type)} · Submitted ${new Date(v.created_at).toLocaleDateString('en-IN')}</div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px">
@@ -1155,12 +1155,12 @@ async function openAdminModal(venueId) {
 
     <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px;margin-bottom:16px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Host Submission Notes</div>
-      ${notes.map(n => `<div style="font-size:13px;color:var(--text);line-height:1.8;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:4px">${n}</div>`).join('')}
+      ${notes.map(n => `<div style="font-size:13px;color:var(--text);line-height:1.8;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:4px">${escHtml(n)}</div>`).join('')}
     </div>
 
     <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px;margin-bottom:20px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Venue Description</div>
-      <div style="font-size:13px;line-height:1.7">${v.description || '—'}</div>
+      <div style="font-size:13px;line-height:1.7">${escHtml(v.description || '—')}</div>
     </div>
 
     <textarea class="admin-notes-box" id="adminReviewNote" placeholder="Add review notes (optional — saved with approval/rejection)…"></textarea>
