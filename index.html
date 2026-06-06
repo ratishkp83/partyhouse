@@ -1368,6 +1368,17 @@
 
 </div><!-- /pages -->
 
+<!-- Reusable confirm dialog (replaces browser confirm() which is suppressed on mobile) -->
+<div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:var(--r-xl);padding:32px 28px;max-width:380px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+    <p id="confirmModalMsg" style="margin:0 0 24px;font-size:16px;color:var(--text);line-height:1.5"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="resolveConfirm(false)" style="padding:10px 20px;border-radius:var(--r-pill);border:1px solid var(--border);background:none;cursor:pointer;font-size:14px;color:var(--muted)">Keep booking</button>
+      <button onclick="resolveConfirm(true)"  style="padding:10px 20px;border-radius:var(--r-pill);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:14px;font-weight:600">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+
 <script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>

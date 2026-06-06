@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-06 (Session 18)  
+**Last updated:** 2026-06-06 (Session 19)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -145,33 +145,51 @@ selectedVenueData  // currently open venue object (app.js)
 
 ---
 
-## 6. QA Status — Session 18 adversarial re-run fixes applied
+## 6. QA Status — Session 19: All open findings resolved ✅
 
-| Severity | Session 17 | Session 18 | Status |
-|---|---|---|---|
-| Critical | 3 | 1 | ✅ C1 fixed in schema.sql · C2 deferred |
-| High | 4 | 0 | ✅ H1b/H1c/H1d/H2/H3/H4 all fixed |
-| Medium | 6 | 3 | ✅ M1/M2/M3 fixed · M4–M6 deferred |
+| Severity | Count | Status |
+|---|---|---|
+| 🔴 Critical | 0 | ✅ All fixed |
+| 🟠 High | 0 | ✅ All fixed |
+| 🟡 Medium | 0 | ✅ All fixed |
+| 🟢 Low | 0 | ✅ All fixed |
 
-**Session 18 fixes applied:**
-- C1: `venues_admin_all` added to `schema.sql` (was already live in DB from prior session)
-- H1b: `escHtml` on `v.name`, `v.city`, `v.badge_label` in `venueCard()` — highest exposure (all pages)
-- H1c: `escHtml` on `v.name` in `data-tip` attribute in `venueCard()`
-- H1d: amenities array `.map(a => escHtml(a))` in admin modal
-- H2: `confirmPayment()` button disabled on click, re-enabled on failure — prevents double-submit
-- H3: `bookings_update_guest` RLS `WITH CHECK (status = 'cancelled')` — already patched live in prior session
-- H4: admin nav badge excludes rejected venues via `.not('host_notes','like','%REJECTED%')`
-- M1: `openVenue()` resets `bwDate`, `bwHours`, `bwOccasion`, and nulls `selectedVenueData` between venues
-- M2: `escHtml` on partner `full_name` in messaging sidebar
-- M3: replaced `JSON.stringify(partner)` in `onclick` with `partnerMap` lookup + `openConvoById()`
+**Session 19 fixes (from Session 18 QA report + deferred backlog):**
 
-**Remaining open (deferred):**
-- Critical: C2 — double-booking race condition (no server-side conflict check) — deferred to Razorpay integration
-- Medium: M4 — `calcPrice()` DOM fallback to hardcoded values
-- Medium: M5 — zero `try/catch` across async functions
-- Medium: M6 — N+1 wishlist fetch on every `renderVenueGrid`
+**Schema (schema.sql) — run these in Supabase SQL Editor as a migration:**
+- **C1** ✅ DB trigger `prevent_double_booking` — `BEFORE INSERT` check for overlapping `(venue_id, party_date, start_time, hours)` slots; raises `BOOKING_CONFLICT` on conflict
+- **C1** ✅ DB trigger `check_booking_capacity` — server-side guest count ≤ venue capacity; raises `CAPACITY_EXCEEDED`
+- **H1** ✅ `venues_update_host` now has `WITH CHECK (is_active = false)` — hosts can never self-activate
+- **H1** ✅ `venues_insert_host` now has `WITH CHECK (is_active = false)` — wizard bypass blocked
+- **H1** ✅ `is_active default false` — venue schema default changed (was `true`)
+- **H2** ✅ `bookings_update_guest` USING clause now requires `status in ('pending','confirmed')` — prevents cancelling already-completed bookings
+- **H2** ✅ `bookings_update_host` `WITH CHECK (status in ('confirmed','cancelled'))` — limits host status transitions
+- **H4** ✅ `reviews_insert_own` now requires a completed booking owned by the reviewer for the same venue
+- **L1** ✅ `messages` content check constraint: `length(content) > 0`
+- **L4** ✅ `payments_insert` RLS — only the booking's guest can insert a payment record
 
-**Next QA step:** adversarial user testing (see §13).
+**app.js:**
+- **H3** ✅ `adminApprove`, `adminRejectPrompt`, `adminRevoke` — all guard `currentProfile.role !== 'admin'` at entry
+- **M1** ✅ `guestCount` reset to 20 in `openVenue()` (was only resetting date/hours/occasion)
+- **M2** ✅ `appendBubble()` — `rawName` stripped of HTML tags before computing initials; name escaped via `escHtml()` before injection
+- **M3** ✅ `error.message` in admin tab list now wrapped in `escHtml()`
+- **L2** ✅ Cancel booking uses `showConfirm()` in-page modal — no more `confirm()` (suppressed on mobile WebViews)
+- **L3** ✅ `handlePhotoUpload()` now validates MIME type (`image/jpeg|png|webp|gif` only)
+- **M4** ✅ `calcPrice()` returns `null` early if `selectedVenueData` is not loaded — no DOM fallback to hardcoded ₹12,000/₹3,500
+- **M5** ✅ `try/catch` added to `confirmPayment()`, `submitListingForReview()`, `saveEditListing()`
+- **M6** ✅ Already fixed in prior session — `renderVenueGrid` uses `Promise.all` for venues + wishlist IDs
+
+**supabase.js:**
+- **M5** ✅ `Bookings.create()` maps DB trigger errors (`BOOKING_CONFLICT`, `CAPACITY_EXCEEDED`, `INVALID_PRICE`) to friendly user-facing toasts
+- **M1/M5** ✅ `openVenue()` resets `guestCount` global and DOM display
+
+**index.html:**
+- **L2** ✅ `#confirmModal` — reusable confirm dialog replaces all `window.confirm()` calls
+
+**⚠️ Schema migration required:** The `schema.sql` changes are not live in the DB yet. Run the new trigger functions and updated RLS policies in Supabase SQL Editor. Safe to run incrementally — the trigger `CREATE OR REPLACE` and policy `DROP/CREATE` blocks are idempotent.
+
+**Remaining deferred:**
+- Nothing security/correctness related. Razorpay integration still blocked on account setup.
 
 ---
 

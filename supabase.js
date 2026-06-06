@@ -306,7 +306,19 @@ const Bookings = {
       })
       .select()
       .single();
-    if (error) { showToast(error.message, 'error'); return null; }
+    if (error) {
+      // Map DB trigger exceptions to friendly messages
+      if (error.message?.includes('BOOKING_CONFLICT')) {
+        showToast('This time slot was just booked by someone else. Please pick a different time.', 'error');
+      } else if (error.message?.includes('CAPACITY_EXCEEDED')) {
+        showToast('Guest count exceeds venue capacity.', 'error');
+      } else if (error.message?.includes('INVALID_PRICE')) {
+        showToast('Invalid booking price. Please try again.', 'error');
+      } else {
+        showToast(error.message, 'error');
+      }
+      return null;
+    }
     return data;
   },
 
@@ -576,7 +588,11 @@ async function openVenue(venueId) {
   const bwHours = document.getElementById('bwHours');
   if (bwHours) bwHours.value = '4';
   const bwOccasion = document.getElementById('bwOccasion');
-  if (bwOccasion) bwOccasion.value = '';
+  if (bwOccasion) bwOccasion.value = 'Birthday';  // reset to first valid option (not empty)
+  // Reset guest count to default — prevents stale count from prior venue carrying over
+  guestCount = 20;
+  const gcEl = document.getElementById('guestCount');
+  if (gcEl) gcEl.textContent = '20';
   goPage('listing');
   loadVenuePage(venueId);
 }

@@ -69,7 +69,7 @@ create table venues (
   photos            text[] default '{}',    -- Supabase Storage URLs
   cover_emoji       text default '🎉',
   badge_label       text,
-  is_active         boolean default true,
+  is_active         boolean default false,   -- must be approved by admin before going live
   is_instant_book   boolean default false,
   rating_avg        numeric(3,2) default 0,
   review_count      int default 0,
@@ -161,7 +161,7 @@ create table messages (
   receiver_id uuid references profiles(id) on delete cascade not null,
   venue_id    uuid references venues(id) on delete set null,
   booking_id  uuid references bookings(id) on delete set null,
-  content     text not null,
+  content     text not null check (length(content) > 0),
   read_at     timestamptz,
   created_at  timestamptz default now()
 );
@@ -196,8 +196,10 @@ create policy "profiles_update_own"  on profiles for update using (auth.uid() = 
 
 -- venues: anyone can read active venues; hosts manage own
 create policy "venues_select_active" on venues for select using (is_active = true);
-create policy "venues_insert_host"   on venues for insert with check (auth.uid() = host_id);
-create policy "venues_update_host"   on venues for update using (auth.uid() = host_id);
+create policy "venues_insert_host"   on venues for insert with check (auth.uid() = host_id and is_active = false);
+create policy "venues_update_host"   on venues for update
+  using  (auth.uid() = host_id)
+  with check (auth.uid() = host_id and is_active = false);  -- hosts cannot self-activate; only admin can set is_active=true
 create policy "venues_delete_host"   on venues for delete using (auth.uid() = host_id);
 -- admins can do anything to venues (approve/reject/revoke)
 create policy "venues_admin_all" on venues for all
@@ -211,15 +213,24 @@ create policy "bookings_host_select"  on bookings for select using (
 );
 create policy "bookings_insert"       on bookings for insert with check (auth.uid() = guest_id);
 create policy "bookings_update_guest" on bookings for update
-  using (auth.uid() = guest_id)
-  with check (auth.uid() = guest_id and status = 'cancelled');  -- guests may only cancel
-create policy "bookings_update_host"  on bookings for update using (
-  auth.uid() in (select host_id from venues where id = venue_id)
-);
+  using  (auth.uid() = guest_id and status in ('pending','confirmed'))   -- can only act on live bookings
+  with check (auth.uid() = guest_id and status = 'cancelled');           -- can only set to cancelled
+create policy "bookings_update_host"  on bookings for update
+  using  (auth.uid() in (select host_id from venues where id = venue_id))
+  with check (status in ('confirmed','cancelled'));                       -- hosts can only confirm or cancel
 
--- reviews: public read; reviewer can write
 create policy "reviews_select_all"   on reviews for select using (true);
-create policy "reviews_insert_own"   on reviews for insert with check (auth.uid() = reviewer_id);
+create policy "reviews_insert_own"   on reviews for insert
+  with check (
+    auth.uid() = reviewer_id
+    and exists (
+      select 1 from bookings
+      where id = reviews.booking_id
+        and guest_id  = auth.uid()
+        and venue_id  = reviews.venue_id
+        and status    = 'completed'
+    )
+  );
 create policy "reviews_update_own"   on reviews for update using (auth.uid() = reviewer_id);
 
 -- wishlists: users manage own
@@ -232,7 +243,7 @@ create policy "messages_select" on messages for select using (
 create policy "messages_insert" on messages for insert with check (auth.uid() = sender_id);
 create policy "messages_update" on messages for update using (auth.uid() = receiver_id);  -- allows receiver to mark read_at
 
--- payments: guest or host of venue can see
+-- payments: guest or host of venue can see; only guest can insert (preemptive for Razorpay)
 create policy "payments_select" on payments for select using (
   auth.uid() in (
     select guest_id from bookings where id = booking_id
@@ -240,9 +251,62 @@ create policy "payments_select" on payments for select using (
     select host_id from venues v join bookings b on b.venue_id = v.id where b.id = booking_id
   )
 );
+create policy "payments_insert" on payments for insert
+  with check (
+    auth.uid() = (select guest_id from bookings where id = booking_id)
+  );
 
 -- ============================================================
--- Storage Buckets (run after enabling Storage in dashboard)
+-- Booking integrity triggers
+-- ============================================================
+
+-- C1: Prevent double-booking at the DB level (server-side conflict check)
+create or replace function check_booking_conflict()
+returns trigger language plpgsql as $$
+begin
+  if exists (
+    select 1 from bookings
+    where venue_id   = NEW.venue_id
+      and party_date = NEW.party_date
+      and status     in ('pending','confirmed')
+      and id         != coalesce(NEW.id, uuid_generate_v4())   -- safe for INSERT (id not yet set)
+      and (
+        (NEW.start_time, (NEW.hours || ' hours')::interval)
+        overlaps
+        (start_time,     (hours     || ' hours')::interval)
+      )
+  ) then
+    raise exception 'BOOKING_CONFLICT: This time slot is already booked.';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists prevent_double_booking on bookings;
+create trigger prevent_double_booking
+  before insert on bookings
+  for each row execute procedure check_booking_conflict();
+
+-- Server-side capacity guard
+create or replace function check_booking_capacity()
+returns trigger language plpgsql as $$
+begin
+  if NEW.guests_count > (select capacity from venues where id = NEW.venue_id) then
+    raise exception 'CAPACITY_EXCEEDED: Guest count exceeds venue capacity.';
+  end if;
+  if NEW.total_price < 1 then
+    raise exception 'INVALID_PRICE: Total price must be at least ₹1.';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists check_booking_capacity on bookings;
+create trigger check_booking_capacity
+  before insert on bookings
+  for each row execute procedure check_booking_capacity();
+
+-- ============================================================
 -- ============================================================
 -- insert into storage.buckets (id, name, public) values ('venue-photos', 'venue-photos', true);
 -- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);

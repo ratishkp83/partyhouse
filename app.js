@@ -2,6 +2,20 @@
 // app.js — PartyHouse UI logic (Supabase-powered)
 // ============================================================
 
+// ── Confirm modal (replaces browser confirm() — suppressed on mobile) ─────────
+let _confirmResolve = null;
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirmModalMsg').textContent = msg;
+    document.getElementById('confirmModal').style.display = 'flex';
+  });
+}
+function resolveConfirm(result) {
+  document.getElementById('confirmModal').style.display = 'none';
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
+
 // ── Indian cities for location autocomplete ───────────────────
 const INDIA_CITIES = [
   'Agra','Ahmedabad','Aizawl','Ajmer','Aligarh','Allahabad','Amravati','Amritsar',
@@ -192,16 +206,21 @@ function adjGuests(d) {
 }
 
 function calcPrice() {
-  const hours    = parseInt(document.getElementById('bwHours')?.value || 6);
-  const cleaning = selectedVenueData?.cleaning_fee   || 3500;
+  // M4: Don't compute with stale DOM fallbacks — require venue data to be loaded first
+  if (!selectedVenueData) return null;
+
+  const hours    = parseInt(document.getElementById('bwHours')?.value) || selectedVenueData.min_hours || 4;
+  const cleaning = selectedVenueData.cleaning_fee ?? 0;
 
   // Apply weekend rate if the selected date is Saturday (6) or Sunday (0)
   const dateVal   = document.getElementById('bwDate')?.value;
   const isWeekend = dateVal ? [0, 6].includes(new Date(dateVal + 'T00:00:00').getDay()) : false;
-  const weekdayRate  = selectedVenueData?.price_per_hour || 12000;
-  const weekendRate  = selectedVenueData?.weekend_rate   || null;
+  const weekdayRate  = selectedVenueData.price_per_hour;
+  const weekendRate  = selectedVenueData.weekend_rate || null;
   const rate         = (isWeekend && weekendRate) ? weekendRate : weekdayRate;
-  const rateLabel    = (isWeekend && weekendRate) ? `₹${rate.toLocaleString('en-IN')} × ${hours} hrs <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>` : `₹${rate.toLocaleString('en-IN')} × ${hours} hours`;
+  const rateLabel    = (isWeekend && weekendRate)
+    ? `₹${rate.toLocaleString('en-IN')} × ${hours} hrs <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>`
+    : `₹${rate.toLocaleString('en-IN')} × ${hours} hours`;
 
   const subtotal = rate * hours;
   const fee      = Math.round((subtotal + cleaning) * 0.08);
@@ -419,34 +438,40 @@ async function confirmPayment() {
   const btn = document.querySelector('#page-booking .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
-  const v         = selectedVenueData;
-  const price     = calcPrice();
-  const date      = document.getElementById('bwDate')?.value;
-  const startTime = document.getElementById('bwStartTime')?.value || '18:00';
-  const hours     = parseInt(document.getElementById('bwHours')?.value || 6);
-  const occ       = document.getElementById('bwOccasion')?.value || 'Party';
+  try {
+    const v         = selectedVenueData;
+    const price     = calcPrice();
+    if (!price) { showToast('Please load the venue page before booking.', 'error'); return; }
+    const date      = document.getElementById('bwDate')?.value;
+    const startTime = document.getElementById('bwStartTime')?.value || '18:00';
+    const hours     = price.hours;
+    const occ       = document.getElementById('bwOccasion')?.value || 'Party';
 
-  showToast('Processing booking…', 'info');
+    showToast('Processing booking…', 'info');
 
-  createdBooking = await Bookings.create(v.id, {
-    partyDate:    date || new Date().toISOString().split('T')[0],
-    startTime,
-    hours,
-    occasion:     occ,
-    guestsCount:  guestCount,
-    pricePerHour: v.price_per_hour,
-    cleaningFee:  v.cleaning_fee || 3500,
-    serviceFee:   price.fee,
-    totalPrice:   price.total
-  });
+    createdBooking = await Bookings.create(v.id, {
+      partyDate:    date || new Date().toISOString().split('T')[0],
+      startTime,
+      hours,
+      occasion:     occ,
+      guestsCount:  guestCount,
+      pricePerHour: v.price_per_hour,
+      cleaningFee:  v.cleaning_fee || 0,
+      serviceFee:   price.fee,
+      totalPrice:   price.total
+    });
 
-  if (createdBooking) {
-    // Show confirmation
-    const codeEl = document.getElementById('confirmationCode');
-    if (codeEl) codeEl.textContent = createdBooking.confirmation_code;
-    nextStep(3);
-    showToast('Booking confirmed! 🎉', 'success');
-  } else {
+    if (createdBooking) {
+      const codeEl = document.getElementById('confirmationCode');
+      if (codeEl) codeEl.textContent = createdBooking.confirmation_code;
+      nextStep(3);
+      showToast('Booking confirmed! 🎉', 'success');
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; }
+    }
+  } catch (err) {
+    console.error('confirmPayment error:', err);
+    showToast('Something went wrong. Please try again.', 'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; }
   }
 }
@@ -484,12 +509,19 @@ async function loadMyBookings() {
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.5px">${b.confirmation_code}</div>
         <span class="trip-status ${statusClass[b.status]||'upcoming'}">${statusLabel[b.status]||b.status}</span>
         ${b.status==='pending'||b.status==='confirmed' ? `
-          <button onclick="if(confirm('Cancel this booking?')) Bookings.cancel('${b.id}').then(loadMyBookings)"
+          <button onclick="cancelBooking('${b.id}')"
             style="margin-left:10px;font-size:11px;color:var(--muted);cursor:pointer;border:1px solid var(--border);padding:3px 10px;border-radius:999px;background:none">
             Cancel
           </button>` : ''}
       </div>
     </div>`).join('');
+}
+
+async function cancelBooking(bookingId) {
+  const confirmed = await showConfirm('Cancel this booking? This cannot be undone.');
+  if (!confirmed) return;
+  await Bookings.cancel(bookingId);
+  loadMyBookings();
 }
 
 // ── Wishlist page ─────────────────────────────────────────────
@@ -737,18 +769,25 @@ async function saveEditListing() {
     ...(needsReview ? { is_active: false } : {}),
   };
 
-  const result = await Venues.update(editingVenueId, updates);
-  btn.textContent = 'Save Changes';
-  btn.disabled    = false;
+  try {
+    const result = await Venues.update(editingVenueId, updates);
+    btn.textContent = 'Save Changes';
+    btn.disabled    = false;
 
-  if (result) {
-    closeEditListing();
-    loadDashboard();
-    if (needsReview) {
-      showToast('Listing updated and sent for re-review 📋', 'info');
-    } else {
-      showToast('Listing updated ✅', 'success');
+    if (result) {
+      closeEditListing();
+      loadDashboard();
+      if (needsReview) {
+        showToast('Listing updated and sent for re-review 📋', 'info');
+      } else {
+        showToast('Listing updated ✅', 'success');
+      }
     }
+  } catch (err) {
+    console.error('saveEditListing error:', err);
+    showToast('Save failed. Please try again.', 'error');
+    btn.textContent = 'Save Changes';
+    btn.disabled    = false;
   }
 }
 
@@ -921,11 +960,13 @@ function wizValidateStep7() {
 // ── Photo handling ────────────────────────────────────────────
 function handlePhotoUpload(input) {
   const files = Array.from(input.files);
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   if (wizPhotos.length + files.length > 15) {
     showToast('Maximum 15 photos allowed', 'error');
     return;
   }
   files.forEach(f => {
+    if (!allowedTypes.includes(f.type)) { showToast(`${f.name} is not a supported image type (JPEG, PNG, WebP, GIF only)`, 'error'); return; }
     if (f.size > 10 * 1024 * 1024) { showToast(f.name + ' exceeds 10 MB', 'error'); return; }
     wizPhotos.push(f);
     const reader = new FileReader();
@@ -1026,20 +1067,25 @@ async function submitListingForReview() {
   // Strip keys that don't exist as DB columns to avoid Supabase insert errors
   delete payload.rules;
 
-  const venue = await Venues.create(payload);
+  try {
+    const venue = await Venues.create(payload);
 
-  btn.textContent = 'Submit for Review 🎉';
-  btn.disabled    = false;
+    btn.textContent = 'Submit for Review 🎉';
+    btn.disabled    = false;
 
-  if (venue) {
-    // M2: Use the DB-generated confirmation_code, not a client-side code
-    const refCode = venue.confirmation_code || ('PH-' + (venue.city?.toUpperCase().slice(0,3) || 'PH') + '-' + Date.now().toString(36).toUpperCase().slice(-6));
-    // Show success step
-    document.getElementById('wizStep8').style.display = 'none';
-    document.getElementById('wizStep9').style.display = 'block';
-    document.getElementById('wizConfirmCode').textContent = refCode;
-    document.getElementById('wizBar').style.width = '100%';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (venue) {
+      const refCode = venue.confirmation_code || ('PH-' + (venue.city?.toUpperCase().slice(0,3) || 'PH') + '-' + Date.now().toString(36).toUpperCase().slice(-6));
+      document.getElementById('wizStep8').style.display = 'none';
+      document.getElementById('wizStep9').style.display = 'block';
+      document.getElementById('wizConfirmCode').textContent = refCode;
+      document.getElementById('wizBar').style.width = '100%';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  } catch (err) {
+    console.error('submitListingForReview error:', err);
+    showToast('Submission failed. Please try again.', 'error');
+    btn.textContent = 'Submit for Review 🎉';
+    btn.disabled    = false;
   }
 }
 
@@ -1079,7 +1125,7 @@ async function adminTab(tab) {
   if (tab === 'rejected') query = query.eq('is_active', false).like('host_notes', '%REJECTED%');
 
   const { data: venues, error } = await query;
-  if (error) { list.innerHTML = `<div style="color:red">Error: ${error.message}</div>`; return; }
+  if (error) { list.innerHTML = `<div style="color:red">Error: ${escHtml(error.message)}</div>`; return; }
 
   // Update pending count
   if (tab === 'pending') {
@@ -1187,6 +1233,7 @@ function closeAdminModal() {
 }
 
 async function adminApprove(venueId) {
+  if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   const note = document.getElementById('adminReviewNote')?.value?.trim() || '';
 
   const { data: v, error: fetchError } = await db.from('venues').select('host_notes').eq('id', venueId).single();
@@ -1204,6 +1251,7 @@ async function adminApprove(venueId) {
 }
 
 async function adminRejectPrompt(venueId) {
+  if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   // H2: Use the notes textarea already in the modal instead of a browser prompt()
   const reason = document.getElementById('adminReviewNote')?.value?.trim() || '';
   if (!reason) {
@@ -1226,7 +1274,9 @@ async function adminReject(venueId, reason) {
 }
 
 async function adminRevoke(venueId) {
-  if (!confirm('Revoke this listing? It will go offline immediately.')) return;
+  if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
+  const confirmed = await showConfirm('Revoke this listing? It will go offline immediately.');
+  if (!confirmed) return;
   const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
   const updatedNotes = (v?.host_notes || '') + `\n\n⏸ REVOKED by admin on ${new Date().toLocaleDateString('en-IN')}`;
   await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
@@ -1357,8 +1407,9 @@ async function loadChatMessages(partnerId) {
 
 function appendBubble(msg, isMine) {
   const bubbles  = document.getElementById('msgBubbles');
-  const name     = isMine ? (currentProfile?.full_name || 'You') : (activeConvoPartner?.full_name || 'User');
-  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const rawName  = isMine ? (currentProfile?.full_name || 'You') : (activeConvoPartner?.full_name || 'User');
+  const name     = escHtml(rawName);
+  const initials = rawName.replace(/<[^>]*>/g, '').split(' ').map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2) || '?';
   const time     = new Date(msg.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   bubbles.insertAdjacentHTML('beforeend', `
     <div class="msg-bubble-wrap ${isMine ? 'mine' : ''}">
