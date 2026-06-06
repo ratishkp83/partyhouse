@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-06 (Session 16)  
+**Last updated:** 2026-06-06 (Session 17)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -145,17 +145,32 @@ selectedVenueData  // currently open venue object (app.js)
 
 ---
 
-## 6. QA Status — ✅ All 17 bugs fixed (Session 16)
+## 6. QA Status — Session 17 adversarial review complete
 
-All findings from the Session 15 static analysis have been resolved. No open bugs.
+| Severity | Session 15 | Session 17 | Status |
+|---|---|---|---|
+| Critical | 4 | 3 | ✅ All fixed |
+| High | 7 | 4 | ✅ 2 fixed / 2 deferred |
+| Medium | 6 | 6 | ✅ 0 fixed / 6 deferred |
 
-| Severity | Count | Status |
-|---|---|---|
-| Critical | 4 | ✅ Fixed |
-| High | 7 | ✅ Fixed |
-| Medium | 6 | ✅ Fixed |
+**Session 17 fixes applied:**
+- Critical: role self-escalation via `updateProfile` → DB patch
+- Critical: admin panel RLS broken (pending venues invisible) → DB patch
+- Critical: XSS in 15 `innerHTML` locations → JS fix pushed to GitHub
+- High: guest could self-confirm/complete bookings → DB patch
+- High: total_price/hours had no DB floor constraints → DB patch (3 CHECK constraints)
 
-**Next QA step:** adversarial user testing (see §13) and adversarial code review (see §14).
+**Remaining open (deferred):**
+- High: no `hasTimeConflict()` re-check in `confirmPayment()` — race condition possible
+- High: `total_price` client-computed, not server-validated — deferred to Razorpay integration
+- Medium: revoked venues appear in pending tab
+- Medium: `selectedVenueData`/`guestCount` not reset between venue navigations
+- Medium: `calcPrice()` DOM fallback to hardcoded values
+- Medium: zero `try/catch` across async functions
+- Medium: N+1 wishlist fetch on every `renderVenueGrid`
+- Medium: `saveEditListing()` silently rejects cleaning_fee = 0
+
+**Next QA step:** adversarial user testing (see §13).
 
 ---
 
@@ -381,3 +396,4 @@ Use this prompt in a fresh Claude session with the full codebase pasted or attac
 | 14 | 2026-06-06 | Seed data: 8 venues across Mumbai/Bangalore/Delhi, all venue types |
 | 15 | 2026-06-06 | QA: full static code analysis — 4 Critical, 7 High, 6 Medium bugs identified (see §6) |
 | 16 | 2026-06-06 | Fixed all 17 QA bugs: C1-C4 (host self-booking, price mismatch, admin pending tab, realtime leak), H1-H7, M1-M6 |
+| 17 | 2026-06-06 | Adversarial code review: 17 findings. Fixed 3 Critical (XSS, role escalation, admin RLS) + 2 High (booking status abuse, price floor) via SQL patches + JS push. 8 medium/high deferred. |
