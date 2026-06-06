@@ -521,3 +521,39 @@ create policy "wishlists_insert" on wishlists
       and venue_status = 'approved'
     )
   );
+
+-- ─────────────────────────────────────────────────────────────
+-- M7 Fix: extend booking conflict trigger to cover UPDATE
+-- Prevents reinstating a cancelled booking into an already-occupied slot
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+create or replace function check_booking_conflict()
+returns trigger language plpgsql as $$
+begin
+  -- Only check when booking is active (being created or reinstated to pending/confirmed)
+  if NEW.status not in ('pending','confirmed') then
+    return NEW;
+  end if;
+
+  if exists (
+    select 1 from bookings
+    where venue_id   = NEW.venue_id
+      and party_date = NEW.party_date
+      and status     in ('pending','confirmed')
+      and id         != NEW.id
+      and (
+        (NEW.start_time, (NEW.hours || ' hours')::interval)
+        overlaps
+        (start_time,     (hours     || ' hours')::interval)
+      )
+  ) then
+    raise exception 'BOOKING_CONFLICT: This time slot is already booked.';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists prevent_double_booking on bookings;
+create trigger prevent_double_booking
+  before insert or update on bookings
+  for each row execute procedure check_booking_conflict();
