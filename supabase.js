@@ -78,9 +78,10 @@ function updateNavForUser(profile) {
         const navRight = document.querySelector('.nav-right');
         if (navRight) navRight.insertBefore(adminLink, navRight.firstChild);
       }
-      // Check pending count and show badge
+      // Check pending count and show badge (exclude rejected venues)
       db.from('venues').select('id', { count: 'exact', head: true })
         .eq('is_active', false)
+        .not('host_notes', 'like', '%REJECTED%')
         .then(({ count }) => {
           if (count > 0) adminLink.textContent = `⚙️ Admin 🔴${count}`;
         });
@@ -529,20 +530,20 @@ function venueCard(v, savedIds = []) {
   const price   = '₹' + Number(v.price_per_hour).toLocaleString('en-IN') + '/hr';
   const cap     = 'Up to ' + v.capacity;
   return `
-    <div class="prop-card" onclick="openVenue('${v.id}')" data-tip="View ${v.name}">
+    <div class="prop-card" onclick="openVenue('${v.id}')" data-tip="View ${escHtml(v.name)}">
       <div class="prop-img">
         <div class="prop-img-placeholder" style="font-size:52px">${v.cover_emoji || '🎉'}</div>
-        <div class="card-type-badge">${v.badge_label || v.venue_type}</div>
+        <div class="card-type-badge">${escHtml(v.badge_label || v.venue_type)}</div>
         <button class="heart-btn ${isSaved ? 'saved' : ''}"
           onclick="event.stopPropagation(); Wishlist.toggle('${v.id}', this)"
           data-tip="Save to wishlist">♥</button>
       </div>
       <div class="prop-info">
         <div class="prop-loc">
-          <div class="prop-city">${v.city}</div>
+          <div class="prop-city">${escHtml(v.city)}</div>
           <div class="prop-rating">⭐ ${rating}</div>
         </div>
-        <div class="prop-name">${v.name}</div>
+        <div class="prop-name">${escHtml(v.name)}</div>
         <div class="prop-capacity">👥 ${cap}</div>
         <div class="prop-price">${price} <span>· min ${v.min_hours} hrs</span></div>
       </div>
@@ -568,6 +569,14 @@ async function renderVenueGrid(containerId, fetchFn, filters = {}) {
 // Open venue detail page
 async function openVenue(venueId) {
   selectedVenueId = venueId;
+  selectedVenueData = null;
+  // Reset booking widget state so stale values don't carry across venues
+  const bwDate = document.getElementById('bwDate');
+  if (bwDate) bwDate.value = '';
+  const bwHours = document.getElementById('bwHours');
+  if (bwHours) bwHours.value = '4';
+  const bwOccasion = document.getElementById('bwOccasion');
+  if (bwOccasion) bwOccasion.value = '';
   goPage('listing');
   loadVenuePage(venueId);
 }

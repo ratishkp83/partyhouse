@@ -199,6 +199,10 @@ create policy "venues_select_active" on venues for select using (is_active = tru
 create policy "venues_insert_host"   on venues for insert with check (auth.uid() = host_id);
 create policy "venues_update_host"   on venues for update using (auth.uid() = host_id);
 create policy "venues_delete_host"   on venues for delete using (auth.uid() = host_id);
+-- admins can do anything to venues (approve/reject/revoke)
+create policy "venues_admin_all" on venues for all
+  using (exists (select 1 from profiles where id = auth.uid() and role = 'admin'))
+  with check (exists (select 1 from profiles where id = auth.uid() and role = 'admin'));
 
 -- bookings: guests see own; hosts see bookings for their venues
 create policy "bookings_guest_select" on bookings for select using (auth.uid() = guest_id);
@@ -206,7 +210,9 @@ create policy "bookings_host_select"  on bookings for select using (
   auth.uid() in (select host_id from venues where id = venue_id)
 );
 create policy "bookings_insert"       on bookings for insert with check (auth.uid() = guest_id);
-create policy "bookings_update_guest" on bookings for update using (auth.uid() = guest_id);
+create policy "bookings_update_guest" on bookings for update
+  using (auth.uid() = guest_id)
+  with check (auth.uid() = guest_id and status = 'cancelled');  -- guests may only cancel
 create policy "bookings_update_host"  on bookings for update using (
   auth.uid() in (select host_id from venues where id = venue_id)
 );

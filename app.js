@@ -416,6 +416,9 @@ function populateBookingSummary() {
 
 async function confirmPayment() {
   if (!selectedVenueData) return;
+  const btn = document.querySelector('#page-booking .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
+
   const v         = selectedVenueData;
   const price     = calcPrice();
   const date      = document.getElementById('bwDate')?.value;
@@ -443,6 +446,8 @@ async function confirmPayment() {
     if (codeEl) codeEl.textContent = createdBooking.confirmation_code;
     nextStep(3);
     showToast('Booking confirmed! 🎉', 'success');
+  } else {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; }
   }
 }
 
@@ -1149,7 +1154,7 @@ async function openAdminModal(venueId) {
       </div>
       <div style="background:var(--surface2);border-radius:var(--r-md);padding:14px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Amenities</div>
-        <div style="font-size:13px;line-height:1.9">${(v.amenities||[]).join(' · ') || '—'}</div>
+        <div style="font-size:13px;line-height:1.9">${(v.amenities||[]).map(a => escHtml(a)).join(' · ') || '—'}</div>
       </div>
     </div>
 
@@ -1236,6 +1241,7 @@ let activeConvoPartnerId  = null;
 let activeConvoPartner    = null;
 let msgRealtimeChannel    = null;
 let allConvos             = [];  // cached for search filtering
+const partnerMap          = {};  // partnerId → partner object (avoids JSON in onclick)
 
 async function loadMessages() {
   if (!currentUser) {
@@ -1245,6 +1251,7 @@ async function loadMessages() {
   }
   document.getElementById('msgConvoList').innerHTML = '<div class="msg-empty-state">Loading…</div>';
   allConvos = await Messages.getInbox();
+  allConvos.forEach(c => { if (c.partnerId && c.partner) partnerMap[c.partnerId] = c.partner; });
   renderConvoList(allConvos);
 
   // Show unread badge on nav item
@@ -1258,14 +1265,14 @@ function renderConvoList(convos) {
     return;
   }
   list.innerHTML = convos.map(c => {
-    const name     = c.partner?.full_name || 'User';
+    const name     = escHtml(c.partner?.full_name || 'User');
     const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     const preview  = c.sender_id === currentUser.id ? `You: ${c.content}` : c.content;
     const time     = formatMsgTime(c.created_at);
     const unread   = c.sender_id !== currentUser.id && !c.read_at;
     const isActive = activeConvoPartnerId === c.partnerId;
     return `
-      <div class="msg-convo-item${isActive ? ' active' : ''}" onclick="openConvo('${c.partnerId}', ${JSON.stringify(c.partner).replace(/"/g, '&quot;')})">
+      <div class="msg-convo-item${isActive ? ' active' : ''}" onclick="openConvoById('${c.partnerId}')">
         <div class="msg-convo-av">${initials}</div>
         <div class="msg-convo-body">
           <div class="msg-convo-name">${name}</div>
@@ -1281,6 +1288,10 @@ function filterConvos(q) {
   if (!q.trim()) { renderConvoList(allConvos); return; }
   const lq = q.toLowerCase();
   renderConvoList(allConvos.filter(c => (c.partner?.full_name || '').toLowerCase().includes(lq) || c.content.toLowerCase().includes(lq)));
+}
+
+function openConvoById(partnerId) {
+  openConvo(partnerId, partnerMap[partnerId] || null);
 }
 
 async function openConvo(partnerId, partner) {
@@ -1371,6 +1382,7 @@ async function sendChatMessage() {
     appendBubble(msg, true);
     // Refresh inbox list
     allConvos = await Messages.getInbox();
+    allConvos.forEach(c => { if (c.partnerId && c.partner) partnerMap[c.partnerId] = c.partner; });
     renderConvoList(allConvos);
   }
 }
