@@ -321,10 +321,13 @@ const Bookings = {
 
   async getHostBookings() {
     if (!currentUser) return [];
+    // H3: Short-circuit if host has no venues — .in('venue_id', []) causes a Postgres error
+    const venueIds = await Venues.getHostVenues().then(v => v.map(x => x.id));
+    if (!venueIds.length) return [];
     const { data } = await db
       .from('bookings')
       .select(`*, venue:venues(id, name, city), guest:profiles(id, full_name, avatar_url)`)
-      .in('venue_id', await Venues.getHostVenues().then(v => v.map(x => x.id)))
+      .in('venue_id', venueIds)
       .order('party_date', { ascending: true });
     return data || [];
   },
@@ -459,7 +462,8 @@ const Messages = {
 
   // Real-time: subscribe to new messages
   subscribe(otherUserId, callback) {
-    return db.channel('messages')
+    // M5: Use unique channel name to avoid collisions across tabs
+    return db.channel(`messages-${currentUser.id}-${Date.now()}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `receiver_id=eq.${currentUser.id}`
@@ -475,7 +479,7 @@ function showToast(message, type = 'info') {
   const existing = document.getElementById('ph-toast');
   if (existing) existing.remove();
 
-  const colors = { success: '#00c896', error: '#ff4d6d', info: '#ff9a3c' };
+  const colors = { success: '#00c896', error: '#ff4d6d', info: '#ff9a3c', warn: '#d97706' };
   const toast = document.createElement('div');
   toast.id = 'ph-toast';
   toast.style.cssText = `

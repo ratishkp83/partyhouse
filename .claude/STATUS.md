@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-06  
+**Last updated:** 2026-06-06 (Session 16)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -145,9 +145,9 @@ selectedVenueData  // currently open venue object (app.js)
 
 ---
 
-## 6. QA Findings — Fix These Next Session
+## 6. QA Findings — ✅ All Fixed (Session 16)
 
-A full static code analysis was done on 2026-06-06. All 17 findings below are confirmed bugs — none are speculation.
+A full static code analysis was done on 2026-06-06. All 17 bugs were fixed in Session 16.
 
 ### Critical (fix first — data integrity or broken core flow)
 
@@ -296,3 +296,4 @@ Then tell Claude: **"Fix the QA bugs from §6 — start with the 4 Criticals, th
 | 13 | 2026-06-05 | Admin notifications: notify Edge Function, 3 email types, Resend templates |
 | 14 | 2026-06-06 | Seed data: 8 venues across Mumbai/Bangalore/Delhi, all venue types |
 | 15 | 2026-06-06 | QA: full static code analysis — 4 Critical, 7 High, 6 Medium bugs identified (see §6) |
+| 16 | 2026-06-06 | Fixed all 17 QA bugs: C1-C4 (host self-booking, price mismatch, admin pending tab, realtime leak), H1-H7, M1-M6 |

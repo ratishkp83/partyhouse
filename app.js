@@ -65,6 +65,9 @@ function heroSearch() {
 
 // ── Page navigation ───────────────────────────────────────────
 function goPage(id) {
+  // C4: Clean up realtime channel before leaving messages page
+  if (msgRealtimeChannel) { db.removeChannel(msgRealtimeChannel); msgRealtimeChannel = null; }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
@@ -75,7 +78,7 @@ function goPage(id) {
 
   // Trigger data loads per page
   if (id === 'home')         loadHome();
-  if (id === 'search')       loadSearch();
+  if (id === 'search')       loadSearch(searchFilters);
   if (id === 'trips')        loadMyBookings();
   if (id === 'wishlist')     loadWishlist();
   if (id === 'dashboard')    loadDashboard();
@@ -242,8 +245,15 @@ function renderCalendar() {
   const firstDay   = new Date(calYear, calMonth, 1).getDay();  // 0=Sun
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
-  // Build a set of dates that are fully booked (treat whole day as blocked when any booking exists)
-  const bookedSet = new Set(calBookedDates.map(b => b.party_date));
+  // Build a set of dates that are fully booked (only block entire day if total booked hours ≥ 18)
+  const bookedSet = new Set();
+  const dateHours = {};
+  for (const b of calBookedDates) {
+    dateHours[b.party_date] = (dateHours[b.party_date] || 0) + (b.hours || 0);
+  }
+  for (const [date, hrs] of Object.entries(dateHours)) {
+    if (hrs >= 18) bookedSet.add(date);
+  }
 
   let html = '';
   // Empty cells before first day
@@ -335,6 +345,12 @@ function nextStep(n) {
 async function startBooking() {
   if (!Auth.requireAuth('make a booking')) return;
 
+  // C1: Prevent host from booking their own venue
+  if (selectedVenueData?.host_id === currentUser?.id) {
+    showToast("You can't book your own venue 🏠", 'error');
+    return;
+  }
+
   const date      = document.getElementById('bwDate')?.value;
   const startTime = document.getElementById('bwStartTime')?.value || '18:00';
   const hours     = parseInt(document.getElementById('bwHours')?.value || 6);
@@ -343,6 +359,14 @@ async function startBooking() {
     showToast('Please select a date on the calendar first 📅', 'warn');
     return;
   }
+
+  // H5: Validate the hidden date input is not in the past (guards against devtools manipulation)
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (new Date(date + 'T00:00:00') < today) {
+    showToast('Please select a future date 📅', 'warn');
+    return;
+  }
+
   if (hasTimeConflict(date, startTime, hours)) {
     showToast('That time slot is already booked. Try a different start time or date.', 'error');
     return;
@@ -373,11 +397,14 @@ function populateBookingSummary() {
   const summaryDate = document.getElementById('bookingSummaryDate');
   if (summaryDate) summaryDate.textContent = `${date} at ${time} · ${hours} hrs · ${occ} · ${guestCount} guests`;
 
-  // Price breakdown in step 1
+  // Price breakdown in step 1 — use calcPrice() result so weekend rate is reflected (C2)
   const pb = document.getElementById('bookingPriceBreakdown');
   if (pb) {
+    const rateLabel = price.rate !== v.price_per_hour
+      ? `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>`
+      : `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours`;
     pb.innerHTML = `
-      <div class="pb-row"><span>₹${v.price_per_hour.toLocaleString('en-IN')} × ${hours} hours</span><span>₹${(v.price_per_hour*hours).toLocaleString('en-IN')}</span></div>
+      <div class="pb-row"><span>${rateLabel}</span><span>₹${(price.rate * Number(hours)).toLocaleString('en-IN')}</span></div>
       <div class="pb-row"><span>Cleaning & setup fee</span><span>₹${(v.cleaning_fee||3500).toLocaleString('en-IN')}</span></div>
       <div class="pb-row"><span>PartyHouse service fee</span><span>₹${price.fee.toLocaleString('en-IN')}</span></div>
       <div class="pb-row total"><span>Total (INR)</span><span>₹${price.total.toLocaleString('en-IN')}</span></div>`;
@@ -452,7 +479,7 @@ async function loadMyBookings() {
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.5px">${b.confirmation_code}</div>
         <span class="trip-status ${statusClass[b.status]||'upcoming'}">${statusLabel[b.status]||b.status}</span>
         ${b.status==='pending'||b.status==='confirmed' ? `
-          <button onclick="Bookings.cancel('${b.id}').then(loadMyBookings)"
+          <button onclick="if(confirm('Cancel this booking?')) Bookings.cancel('${b.id}').then(loadMyBookings)"
             style="margin-left:10px;font-size:11px;color:var(--muted);cursor:pointer;border:1px solid var(--border);padding:3px 10px;border-radius:999px;background:none">
             Cancel
           </button>` : ''}
@@ -491,12 +518,12 @@ async function loadDashboard() {
   const pending   = bookings.filter(b => b.status === 'pending').length;
   const earnings  = bookings
     .filter(b => b.status === 'confirmed' || b.status === 'completed')
-    .reduce((sum, b) => sum + b.total_price, 0);
+    .reduce((sum, b) => sum + (b.total_price || 0), 0);
 
   const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setEl('dashActiveVenues',  hostVenues.length);
   setEl('dashPending',       pending);
-  setEl('dashEarnings',      '₹' + (earnings/100000).toFixed(1) + 'L');
+  setEl('dashEarnings',      earnings > 0 ? '₹' + (earnings/100000).toFixed(1) + 'L' : '₹0');
 
   // Bookings table
   const tbody = document.getElementById('dashBookingsBody');
@@ -626,6 +653,7 @@ function switchEditTab(el, panelId) {
 ['editName','editDesc'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', () => {
+    if (!editingVenueData) return;  // H6: guard — listeners attach at load before modal opens
     const v = editingVenueData;
     const changed = el.id === 'editName'
       ? el.value.trim() !== (v?.name || '')
@@ -695,8 +723,8 @@ async function saveEditListing() {
     cover_emoji:      document.getElementById('editEmoji').value.trim()          || v.cover_emoji,
     price_per_hour:   parseInt(document.getElementById('editPrice').value)       || v.price_per_hour,
     weekend_rate:     parseInt(document.getElementById('editWeekendRate').value) || null,
-    cleaning_fee:     parseInt(document.getElementById('editCleaning').value)    || 0,
-    security_deposit: parseInt(document.getElementById('editDeposit').value)     || 0,
+    cleaning_fee:     parseInt(document.getElementById('editCleaning').value)    || v.cleaning_fee     || 0,
+    security_deposit: parseInt(document.getElementById('editDeposit').value)     || v.security_deposit || 0,
     is_instant_book:  document.getElementById('esw-instant')?.classList.contains('on') || false,
     amenities,
     occasions,
@@ -821,6 +849,8 @@ function selType(el, type) {
 
 function toggleAm(el) {
   el.classList.toggle('sel');
+  // M4: Only mutate wizData when in new-listing wizard, not in edit listing modal
+  if (el.closest('#editListingOverlay')) return;
   const label = el.querySelector('span').textContent.trim();
   if (el.classList.contains('sel')) {
     if (!wizData.amenities.includes(label)) wizData.amenities.push(label);
@@ -997,7 +1027,8 @@ async function submitListingForReview() {
   btn.disabled    = false;
 
   if (venue) {
-    const refCode = 'PH-' + venue.city?.toUpperCase().slice(0,3) + '-' + Date.now().toString(36).toUpperCase().slice(-6);
+    // M2: Use the DB-generated confirmation_code, not a client-side code
+    const refCode = venue.confirmation_code || ('PH-' + (venue.city?.toUpperCase().slice(0,3) || 'PH') + '-' + Date.now().toString(36).toUpperCase().slice(-6));
     // Show success step
     document.getElementById('wizStep8').style.display = 'none';
     document.getElementById('wizStep9').style.display = 'block';
@@ -1038,7 +1069,7 @@ async function adminTab(tab) {
 
   // Fetch venues based on tab
   let query = db.from('venues').select('*, host:profiles!host_id(full_name, email)').order('created_at', { ascending: false });
-  if (tab === 'pending')  query = query.eq('is_active', false);
+  if (tab === 'pending')  query = query.eq('is_active', false).not('host_notes', 'like', '%REJECTED%');
   if (tab === 'approved') query = query.eq('is_active', true);
   if (tab === 'rejected') query = query.eq('is_active', false).like('host_notes', '%REJECTED%');
 
@@ -1168,8 +1199,12 @@ async function adminApprove(venueId) {
 }
 
 async function adminRejectPrompt(venueId) {
-  const reason = prompt('Rejection reason (will be stored with the listing):');
-  if (reason === null) return; // cancelled
+  // H2: Use the notes textarea already in the modal instead of a browser prompt()
+  const reason = document.getElementById('adminReviewNote')?.value?.trim() || '';
+  if (!reason) {
+    showToast('Please enter a rejection reason in the notes box above', 'error');
+    return;
+  }
   await adminReject(venueId, reason);
 }
 
