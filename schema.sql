@@ -378,3 +378,101 @@ create policy "venues_update_host" on venues for update
 drop policy if exists "venues_select_own" on venues;
 create policy "venues_select_own" on venues for select
   using (auth.uid() = host_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- H1 + M5 Fix: server-side constraints on bookings
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+alter table bookings
+  add constraint bookings_party_date_future  check (party_date >= current_date),
+  add constraint bookings_hours_positive     check (hours > 0),
+  add constraint bookings_guests_positive    check (guests_count >= 1),
+  add constraint bookings_total_positive     check (total_price >= 1);
+
+-- ─────────────────────────────────────────────────────────────
+-- H3 Fix: Storage RLS policies
+-- Run in Supabase SQL Editor AFTER creating the buckets:
+--   insert into storage.buckets (id, name, public) values ('venue-photos', 'venue-photos', true);
+--   insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+-- ─────────────────────────────────────────────────────────────
+
+-- venue-photos: host can only upload to their own venue's folder ({venueId}/...)
+-- Path format: {venueId}/{timestamp}.{ext}
+create policy "venue_photos_host_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'venue-photos'
+    and auth.uid() is not null
+    and exists (
+      select 1 from venues
+      where id::text = split_part(name, '/', 1)
+      and host_id = auth.uid()
+    )
+  );
+
+-- venue-photos: host can delete their own venue's photos
+create policy "venue_photos_host_delete" on storage.objects
+  for delete using (
+    bucket_id = 'venue-photos'
+    and auth.uid() is not null
+    and exists (
+      select 1 from venues
+      where id::text = split_part(name, '/', 1)
+      and host_id = auth.uid()
+    )
+  );
+
+-- venue-photos: anyone can read (bucket is public, but explicit policy is safer)
+create policy "venue_photos_public_read" on storage.objects
+  for select using (bucket_id = 'venue-photos');
+
+-- avatars: authenticated users can upload/update only their own avatar ({userId}/*)
+create policy "avatars_owner_upload" on storage.objects
+  for insert with check (
+    bucket_id = 'avatars'
+    and auth.uid() is not null
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+create policy "avatars_owner_update" on storage.objects
+  for update using (
+    bucket_id = 'avatars'
+    and auth.uid() is not null
+    and split_part(name, '/', 1) = auth.uid()::text
+  );
+
+create policy "avatars_public_read" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+-- ─────────────────────────────────────────────────────────────
+-- H2 Fix: tighten bookings update RLS
+-- H7 Fix: add WITH CHECK to reviews_update_own
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+
+-- H2: Tighten booking update policies
+drop policy if exists "bookings_update_guest" on bookings;
+drop policy if exists "bookings_update_host"  on bookings;
+
+-- Guests can only cancel their own pending/confirmed bookings
+create policy "bookings_update_guest" on bookings for update
+  using  (auth.uid() = guest_id and status in ('pending','confirmed'))
+  with check (auth.uid() = guest_id and status = 'cancelled');
+
+-- Hosts can confirm or cancel bookings for their venues only
+create policy "bookings_update_host" on bookings for update
+  using  (auth.uid() in (select host_id from venues where id = venue_id))
+  with check (
+    auth.uid() in (select host_id from venues where id = venue_id)
+    and status in ('confirmed','cancelled')
+  );
+
+-- H7: Prevent reviewers from changing rating/venue/booking after submission
+drop policy if exists "reviews_update_own" on reviews;
+create policy "reviews_update_own" on reviews for update
+  using (auth.uid() = reviewer_id)
+  with check (
+    auth.uid() = reviewer_id
+    and venue_id    = (select venue_id    from reviews r2 where r2.id = reviews.id)
+    and booking_id  = (select booking_id  from reviews r2 where r2.id = reviews.id)
+    and rating between 1 and 5
+  );

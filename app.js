@@ -424,7 +424,7 @@ function populateBookingSummary() {
       : `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours`;
     pb.innerHTML = `
       <div class="pb-row"><span>${rateLabel}</span><span>₹${(price.rate * Number(hours)).toLocaleString('en-IN')}</span></div>
-      <div class="pb-row"><span>Cleaning & setup fee</span><span>₹${(v.cleaning_fee||3500).toLocaleString('en-IN')}</span></div>
+      <div class="pb-row"><span>Cleaning & setup fee</span><span>₹${(v.cleaning_fee ?? 0).toLocaleString('en-IN')}</span></div>
       <div class="pb-row"><span>PartyHouse service fee</span><span>₹${price.fee.toLocaleString('en-IN')}</span></div>
       <div class="pb-row total"><span>Total (INR)</span><span>₹${price.total.toLocaleString('en-IN')}</span></div>`;
   }
@@ -443,6 +443,12 @@ async function confirmPayment() {
     const price     = calcPrice();
     if (!price) { showToast('Please load the venue page before booking.', 'error'); return; }
     const date      = document.getElementById('bwDate')?.value;
+
+    // H1: Re-validate date here — user may have manipulated the DOM between startBooking() and confirmPayment()
+    if (!date) { showToast('No date selected. Please go back and pick a date.', 'error'); if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; } return; }
+    const _today = new Date(); _today.setHours(0,0,0,0);
+    if (new Date(date + 'T00:00:00') < _today) { showToast('Selected date is in the past. Please go back and pick a valid date.', 'error'); if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; } return; }
+
     const startTime = document.getElementById('bwStartTime')?.value || '18:00';
     const hours     = price.hours;
     const occ       = document.getElementById('bwOccasion')?.value || 'Party';

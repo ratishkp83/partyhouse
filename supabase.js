@@ -439,7 +439,8 @@ const Messages = {
       .from('messages')
       .select(`*, sender:profiles!sender_id(id, full_name, avatar_url), receiver:profiles!receiver_id(id, full_name, avatar_url)`)
       .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);  // H4: cap inbox fetch — prevents DoS from message spam
     if (!data) return [];
     // Deduplicate: keep only the latest message per conversation partner
     const seen = new Map();
