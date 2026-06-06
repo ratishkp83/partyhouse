@@ -13,7 +13,7 @@
 //   RESEND_API_KEY        — from resend.com (free tier: 3,000 emails/month)
 //   ADMIN_EMAIL           — email address that receives new listing alerts
 //   SUPABASE_URL          — your project URL (auto-set by Supabase)
-//   SUPABASE_ANON_KEY     — anon key, used to validate caller JWTs
+//   SUPABASE_PUBLISHABLE_KEYS — publishable key for JWT validation (auto-set by Supabase; Settings → API → JWT Signing Keys)
 //   SUPABASE_SERVICE_ROLE_KEY — service role key (auto-set by Supabase)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
@@ -47,7 +47,7 @@ async function assertAdmin(req: Request): Promise<Response | null> {
   // Validate the JWT using a per-request anon client
   const anonClient = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
+    Deno.env.get('SUPABASE_PUBLISHABLE_KEYS')!,
   )
   const { data: { user }, error: authErr } = await anonClient.auth.getUser(token)
   if (authErr || !user) {
