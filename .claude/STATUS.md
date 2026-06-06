@@ -145,41 +145,17 @@ selectedVenueData  // currently open venue object (app.js)
 
 ---
 
-## 6. QA Findings — ✅ All Fixed (Session 16)
+## 6. QA Status — ✅ All 17 bugs fixed (Session 16)
 
-A full static code analysis was done on 2026-06-06. All 17 bugs were fixed in Session 16.
+All findings from the Session 15 static analysis have been resolved. No open bugs.
 
-### Critical (fix first — data integrity or broken core flow)
+| Severity | Count | Status |
+|---|---|---|
+| Critical | 4 | ✅ Fixed |
+| High | 7 | ✅ Fixed |
+| Medium | 6 | ✅ Fixed |
 
-| # | Bug | Location | Fix |
-|---|---|---|---|
-| C1 | **Host can book their own venue** — no guard against `currentUser.id === host.id` | `startBooking()` app.js:335 | Add 2-line owner check before booking |
-| C2 | **Price mismatch in booking summary** — step 1 summary always shows weekday rate, even on weekends; `populateBookingSummary()` uses `v.price_per_hour` directly instead of `price.rate` from `calcPrice()` | `populateBookingSummary()` app.js:380 | Replace `v.price_per_hour` with `price.rate` |
-| C3 | **Admin pending tab shows rejected venues** — pending query is `.eq('is_active', false)` with no exclusion of `REJECTED` notes, so rejected venues appear in pending and can be re-approved accidentally | `adminTab()` app.js:1041 | Add `.not('host_notes', 'like', '%REJECTED%')` to pending query |
-| C4 | **Real-time message channel leaks on page navigation** — `msgRealtimeChannel` only cleaned up in `closeChatPanel()`, not on `goPage()`. Channel fires callbacks on dead DOM, exhausts Supabase realtime limits | `goPage()` app.js:67 | Add `db.removeChannel(msgRealtimeChannel)` at top of `goPage()` |
-
-### High (fix before launch)
-
-| # | Bug | Location | Fix |
-|---|---|---|---|
-| H1 | **Calendar blocks entire day if any booking exists** — even a 4hr morning booking marks the whole day red; guests can't book evening slots | `renderCalendar()` app.js:236 | Only mark day blocked if booking covers ≥18 hrs; rely on `hasTimeConflict()` for time-level accuracy |
-| H2 | **Edit listing zeros cleaning_fee / security_deposit on save** — `parseInt('') \|\| 0` overwrites existing values with 0 if host leaves those fields untouched | `saveEditListing()` app.js:698 | Change `\|\| 0` to `\|\| v.cleaning_fee \|\| 0` and `\|\| v.security_deposit \|\| 0` |
-| H3 | **getHostBookings() crashes with empty venues array** — `.in('venue_id', [])` throws a Postgres UUID error; new hosts with no venues see a broken dashboard | `Bookings.getHostBookings()` supabase.js:322 | Short-circuit return `[]` if `venueIds.length === 0` |
-| H4 | **No confirmation before booking cancel** — single misclick cancels a confirmed booking with no undo | `loadMyBookings()` app.js:455 | Wrap in `confirm()` dialog |
-| H5 | **Guest can book a past date via devtools** — calendar prevents UI clicks but doesn't validate the hidden `#bwDate` input value | `startBooking()` app.js:335 | Add `date < today` check after the empty-date guard |
-| H6 | **Re-review warning fires incorrectly on first open** — `editingVenueData` is null when the `input` event listeners attach at page load; first edit always shows the re-review banner | `app.js:626` | Add `if (!editingVenueData) return` at top of each listener |
-| H7 | **Earnings shows ₹NaNL if any booking has null total_price** — `reduce()` doesn't guard against null values | `loadDashboard()` app.js:493 | Change to `(s, b) => s + (b.total_price \|\| 0)` and show `—` for zero |
-
-### Medium (UX gaps)
-
-| # | Bug | Location | Fix |
-|---|---|---|---|
-| M1 | No back navigation from listing page | `page-listing` index.html | Add `← Back` button that calls `goPage('search')` with saved filters |
-| M2 | Wizard success screen shows client-generated code, not the DB confirmation code | `submitListingForReview()` app.js:1000 | Use `venue.confirmation_code` from the DB response |
-| M3 | Search filters reset when returning from listing page | `goPage()` app.js:78 | Pass `searchFilters` when calling `loadSearch()` from goPage |
-| M4 | `toggleAm()` mutates `wizData.amenities` even when called from edit listing modal | `toggleAm()` app.js:822 | Scope mutation to wizard context only |
-| M5 | Real-time channel name `'messages'` collides across tabs | `Messages.subscribe()` supabase.js:462 | Use unique name: `messages-${currentUser.id}-${Date.now()}` |
-| M6 | `showToast()` type `'warn'` has no colour mapping — border renders as `undefined` | `showToast()` supabase.js:478 | Add `warn: '#d97706'` to the colours map |
+**Next QA step:** adversarial user testing (see §13) and adversarial code review (see §14).
 
 ---
 
@@ -271,9 +247,117 @@ Paste this at the start of the new session:
 
 > "I'm resuming work on PartyHouse, a party venue booking platform. GitHub: https://github.com/ratishkp83/partyhouse · Live: https://ratishkp83.github.io/partyhouse/ · Supabase: https://hxeskohikmtpzfrmovot.supabase.co · Please clone the repo and read `.claude/STATUS.md` before we continue."
 
-Then tell Claude: **"Fix the QA bugs from §6 — start with the 4 Criticals, then the 7 Highs, then the 6 Mediums. Fix them all in one pass."**
+Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare migration, or a new feature.
 
 **GitHub token scope needed:** `repo` only. Create at: https://github.com/settings/tokens/new
+
+---
+
+## 13. Adversarial Testing Prompt
+
+Use this prompt with a fresh Claude session (no context) to stress-test the live app like a hostile user:
+
+---
+
+> You are an adversarial QA tester for **PartyHouse**, a party venue booking platform at **https://ratishkp83.github.io/partyhouse/**
+>
+> Your job is to break it. Think like a malicious user, a confused guest, a greedy host, and a bored developer with devtools open — all at once.
+>
+> **Test every attack surface below. For each, report: what you tried, what happened, and a severity rating (Critical / High / Medium / Low).**
+>
+> **Auth & identity**
+> - Sign up with a disposable email. Verify the confirmation flow works end-to-end.
+> - Try logging in with wrong credentials — does the error message leak whether the email exists?
+> - Open two browser tabs logged in as different users. Navigate between pages. Does state leak between them?
+> - Log out mid-booking. What happens to the in-progress booking?
+>
+> **Booking integrity**
+> - Open a venue, pick a date, open devtools, manually set `#bwDate` to yesterday. Click "Book Now". Does it go through?
+> - Open a venue you own (if you listed one) and try to book it.
+> - Start a booking, complete step 1, open a new tab and cancel the booking, then complete payment in the original tab. What happens?
+> - Book the same venue for the same date+time in two browser tabs simultaneously. Does a double-booking occur?
+>
+> **Price manipulation**
+> - Open devtools, find the price breakdown DOM, change the total amount. Click "Confirm & Pay". Does the backend accept the manipulated price?
+> - Change `bwHours` to 0 or a negative number via devtools before booking. What total is recorded?
+>
+> **Host dashboard**
+> - Create a fresh account (no venues). Go to the dashboard. Does it crash or show a clean empty state?
+> - Edit a listing, clear the cleaning fee field, save. Re-open the listing — is the fee preserved or zeroed?
+> - Try to approve/reject a venue from the dashboard as a non-admin.
+>
+> **Admin panel**
+> - Navigate directly to `#admin` or call `goPage('admin')` in the console without admin privileges. What do you see?
+> - Try calling `adminApprove('some-uuid')` from the console as a non-admin. Does the DB reject it?
+> - Check the pending tab — do any rejected venues appear?
+>
+> **Messaging**
+> - Open messages in two tabs. Send a message in one. Does the other update in real-time?
+> - Open messages, then navigate away and back rapidly 10 times. Check the browser console for Supabase channel errors.
+> - Try sending an empty message. Try sending a message with `<script>alert(1)</script>`. What is rendered?
+>
+> **Wishlist & navigation**
+> - Heart a venue, then log out and back in. Is the wishlist persisted?
+> - Apply a city filter, click a venue, go back. Are the search filters preserved?
+> - Open the app on a mobile viewport (375px). Go through the full booking flow. Report any layout breakages.
+>
+> **Edge cases**
+> - Use the browser back button at every step of the booking flow. Does anything break?
+> - Resize the browser mid-booking. Any visual corruption?
+> - Throttle network to "Slow 3G" in devtools. Do loading states appear everywhere, or do any sections flash blank?
+> - Disable JavaScript midway through a page interaction. What does the user see?
+>
+> **For each issue found:** paste the exact steps to reproduce, the severity, and the file/function most likely responsible.
+
+---
+
+## 14. Adversarial Code Review Prompt
+
+Use this prompt in a fresh Claude session with the full codebase pasted or attached:
+
+---
+
+> You are a hostile senior engineer doing a security and correctness review of **PartyHouse**, a vanilla JS + Supabase SPA. You are looking for bugs, not compliments. Be ruthless.
+>
+> The three source files are: `index.html`, `app.js`, `supabase.js`. The Supabase schema is in `schema.sql`.
+>
+> **Review every category below. For each finding, cite the exact file, function, and line range. Rate severity: Critical / High / Medium / Low.**
+>
+> **Security**
+> - Are there any XSS vectors? Look for `innerHTML` assignments that use unsanitised user-supplied data. `escHtml()` exists — is it applied consistently?
+> - Are Supabase RLS policies actually enforced for every mutation? List every `db.from(...).update/insert/delete` call and whether the RLS policy covers it.
+> - Can a guest access or modify another guest's bookings by guessing a UUID?
+> - Is the admin role check purely client-side, or is it enforced at the DB layer too?
+> - Are there any API keys or secrets in client-side code that shouldn't be there?
+> - Does `Auth.requireAuth()` guard every action that modifies data?
+>
+> **Data integrity**
+> - Are there any race conditions in the booking flow (e.g. two tabs booking the same slot)?
+> - Is `hasTimeConflict()` called before every booking insert, or only in the UI?
+> - Can `total_price` be submitted as 0 or negative?
+> - What happens if `Venues.getById()` returns null mid-flow — are all downstream references null-guarded?
+>
+> **State management**
+> - List every module-level mutable variable (`let`). For each: what resets it, and what happens if it's stale when a new page loads?
+> - `selectedVenueData`, `guestCount`, `calSelectedDate` — are these reset when the user navigates away from a listing and returns to a different one?
+> - `wizData` and `wizPhotos` — are they fully reset on `startNewListing()`? What if the user abandons mid-wizard and reopens?
+>
+> **Error handling**
+> - Map every `async` function. Which ones have no `try/catch` and no error state shown to the user?
+> - What happens if Supabase is unreachable — do any spinners spin forever?
+> - Are there any `await` calls whose returned errors are silently swallowed?
+>
+> **Performance**
+> - Are there any N+1 query patterns (a query inside a loop)?
+> - `renderVenueGrid` fetches wishlist IDs on every render — is this called redundantly?
+> - Are Supabase realtime subscriptions ever created multiple times for the same resource?
+>
+> **Correctness**
+> - `calcPrice()` reads from DOM elements — what does it return if called before the listing page is rendered?
+> - The `editingVenueData` input listeners attach at DOMContentLoaded — are there any other listeners with the same timing problem?
+> - `removePhoto(idx)` splices `wizPhotos` and re-indexes remove buttons — does it correctly handle removing the last photo, or the first?
+>
+> Output a prioritised bug list. Group by severity. Be specific — vague findings like "improve error handling" are not acceptable. Every finding must include a reproduction path or proof.
 
 ---
 
