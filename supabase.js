@@ -225,6 +225,7 @@ const Venues = {
   },
 
   async update(id, updates) {
+    if (!Auth.requireAuth('edit a venue')) return null;
     const { data, error } = await db
       .from('venues')
       .update(updates)
