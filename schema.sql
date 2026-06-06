@@ -192,7 +192,14 @@ alter table payments  enable row level security;
 
 -- profiles: users can read all, update own
 create policy "profiles_select_all"  on profiles for select using (true);
-create policy "profiles_update_own"  on profiles for update using (auth.uid() = id);
+-- WITH CHECK locks down which columns can change: role is immutable by the user themselves.
+-- An authenticated user can update their own row but cannot escalate their own role.
+create policy "profiles_update_own"  on profiles for update
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and role = (select role from profiles where id = auth.uid())
+  );
 
 -- venues: anyone can read active venues; hosts manage own
 create policy "venues_select_active" on venues for select using (is_active = true);
