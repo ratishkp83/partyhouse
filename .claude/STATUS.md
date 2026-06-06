@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-06 (Session 17)  
+**Last updated:** 2026-06-06 (Session 18)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -145,30 +145,31 @@ selectedVenueData  // currently open venue object (app.js)
 
 ---
 
-## 6. QA Status — Session 17 adversarial review complete
+## 6. QA Status — Session 18 adversarial re-run fixes applied
 
-| Severity | Session 15 | Session 17 | Status |
+| Severity | Session 17 | Session 18 | Status |
 |---|---|---|---|
-| Critical | 4 | 3 | ✅ All fixed |
-| High | 7 | 4 | ✅ 2 fixed / 2 deferred |
-| Medium | 6 | 6 | ✅ 0 fixed / 6 deferred |
+| Critical | 3 | 1 | ✅ C1 fixed in schema.sql · C2 deferred |
+| High | 4 | 0 | ✅ H1b/H1c/H1d/H2/H3/H4 all fixed |
+| Medium | 6 | 3 | ✅ M1/M2/M3 fixed · M4–M6 deferred |
 
-**Session 17 fixes applied:**
-- Critical: role self-escalation via `updateProfile` → DB patch
-- Critical: admin panel RLS broken (pending venues invisible) → DB patch
-- Critical: XSS in 15 `innerHTML` locations → JS fix pushed to GitHub
-- High: guest could self-confirm/complete bookings → DB patch
-- High: total_price/hours had no DB floor constraints → DB patch (3 CHECK constraints)
+**Session 18 fixes applied:**
+- C1: `venues_admin_all` added to `schema.sql` (was already live in DB from prior session)
+- H1b: `escHtml` on `v.name`, `v.city`, `v.badge_label` in `venueCard()` — highest exposure (all pages)
+- H1c: `escHtml` on `v.name` in `data-tip` attribute in `venueCard()`
+- H1d: amenities array `.map(a => escHtml(a))` in admin modal
+- H2: `confirmPayment()` button disabled on click, re-enabled on failure — prevents double-submit
+- H3: `bookings_update_guest` RLS `WITH CHECK (status = 'cancelled')` — already patched live in prior session
+- H4: admin nav badge excludes rejected venues via `.not('host_notes','like','%REJECTED%')`
+- M1: `openVenue()` resets `bwDate`, `bwHours`, `bwOccasion`, and nulls `selectedVenueData` between venues
+- M2: `escHtml` on partner `full_name` in messaging sidebar
+- M3: replaced `JSON.stringify(partner)` in `onclick` with `partnerMap` lookup + `openConvoById()`
 
 **Remaining open (deferred):**
-- High: no `hasTimeConflict()` re-check in `confirmPayment()` — race condition possible
-- High: `total_price` client-computed, not server-validated — deferred to Razorpay integration
-- Medium: revoked venues appear in pending tab
-- Medium: `selectedVenueData`/`guestCount` not reset between venue navigations
-- Medium: `calcPrice()` DOM fallback to hardcoded values
-- Medium: zero `try/catch` across async functions
-- Medium: N+1 wishlist fetch on every `renderVenueGrid`
-- Medium: `saveEditListing()` silently rejects cleaning_fee = 0
+- Critical: C2 — double-booking race condition (no server-side conflict check) — deferred to Razorpay integration
+- Medium: M4 — `calcPrice()` DOM fallback to hardcoded values
+- Medium: M5 — zero `try/catch` across async functions
+- Medium: M6 — N+1 wishlist fetch on every `renderVenueGrid`
 
 **Next QA step:** adversarial user testing (see §13).
 
@@ -397,3 +398,4 @@ Use this prompt in a fresh Claude session with the full codebase pasted or attac
 | 15 | 2026-06-06 | QA: full static code analysis — 4 Critical, 7 High, 6 Medium bugs identified (see §6) |
 | 16 | 2026-06-06 | Fixed all 17 QA bugs: C1-C4 (host self-booking, price mismatch, admin pending tab, realtime leak), H1-H7, M1-M6 |
 | 17 | 2026-06-06 | Adversarial code review: 17 findings. Fixed 3 Critical (XSS, role escalation, admin RLS) + 2 High (booking status abuse, price floor) via SQL patches + JS push. 8 medium/high deferred. |
+| 18 | 2026-06-06 | QA re-run: fixed H1b/H1c/H1d (venueCard XSS), H2 (double-submit), H3 (booking RLS restrict), H4 (admin badge), M1 (stale bwDate), M2/M3 (messaging partner name + JSON onclick). C2 remains deferred. |
