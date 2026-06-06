@@ -496,3 +496,28 @@ begin
   return new;
 end;
 $$;
+
+-- ─────────────────────────────────────────────────────────────
+-- M6 Fix: prevent wishlisting inactive/unapproved venues
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+drop policy if exists "wishlists_own" on wishlists;
+
+-- Select and delete: user owns the row
+create policy "wishlists_select_delete" on wishlists
+  for select using (auth.uid() = user_id);
+
+create policy "wishlists_delete" on wishlists
+  for delete using (auth.uid() = user_id);
+
+-- Insert: only active (approved) venues can be wishlisted
+create policy "wishlists_insert" on wishlists
+  for insert with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from venues
+      where id = venue_id
+      and is_active = true
+      and venue_status = 'approved'
+    )
+  );
