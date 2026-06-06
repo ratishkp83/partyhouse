@@ -599,7 +599,7 @@ async function loadDashboard() {
           <div style="font-size:12px;color:var(--muted)">₹${v.price_per_hour.toLocaleString('en-IN')}/hr · Max ${v.capacity} · ⭐ ${v.rating_avg||'New'}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-          <span class="status-badge ${v.is_active?'status-confirmed':'status-pending'}">${v.is_active?'Active':'Pending'}</span>
+          <span class="status-badge ${{approved:'status-confirmed',pending:'status-pending',rejected:'status-cancelled',revoked:'status-pending'}[v.venue_status]||'status-pending'}">${{approved:'Active',pending:'Pending Review',rejected:'Rejected',revoked:'Revoked'}[v.venue_status]||'Pending'}</span>
           <button onclick="openEditListing('${v.id}')" data-tip="Edit this listing"
             style="font-size:12px;padding:4px 10px;border-radius:var(--r-pill);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;color:var(--text);font-weight:500;transition:border-color .15s"
             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -725,7 +725,7 @@ async function saveEditListing() {
   if (!desc)  { showToast('Description is required', 'error'); btn.textContent = 'Save Changes'; btn.disabled = false; return; }
 
   // Check if sensitive fields changed — requires re-review
-  const needsReview = v.is_active && (name !== v.name || desc !== v.description);
+  const needsReview = v.venue_status === 'approved' && (name !== v.name || desc !== v.description);
 
   // Collect amenities
   const amenities = Array.from(document.querySelectorAll('#editAmenityGrid .am-check.sel'))
@@ -766,7 +766,7 @@ async function saveEditListing() {
     amenities,
     occasions,
     host_notes: updatedNotes,
-    ...(needsReview ? { is_active: false } : {}),
+    ...(needsReview ? { is_active: false, venue_status: 'pending' } : {}),
   };
 
   try {
@@ -1053,6 +1053,7 @@ async function submitListingForReview() {
     cover_emoji:   document.querySelector('.type-card.sel .tc-icon')?.textContent || '🎉',
     badge_label:   (document.querySelector('.type-card.sel .tc-icon')?.textContent || '') + ' ' + wizData.venue_type,
     is_active:     false,        // Stays off until admin approves
+    venue_status:  'pending',     // Explicit status — never rely on host_notes string-matching
     is_instant_book: wizData.rules?.instant_book || false,
     host_notes:    [
       `Host: ${hostName} | Phone: ${hostPhone} | Email: ${hostEmail}`,
@@ -1120,9 +1121,9 @@ async function adminTab(tab) {
 
   // Fetch venues based on tab
   let query = db.from('venues').select('*, host:profiles!host_id(full_name, email)').order('created_at', { ascending: false });
-  if (tab === 'pending')  query = query.eq('is_active', false).not('host_notes', 'like', '%REJECTED%');
-  if (tab === 'approved') query = query.eq('is_active', true);
-  if (tab === 'rejected') query = query.eq('is_active', false).like('host_notes', '%REJECTED%');
+  if (tab === 'pending')  query = query.eq('venue_status', 'pending');
+  if (tab === 'approved') query = query.eq('venue_status', 'approved');
+  if (tab === 'rejected') query = query.eq('venue_status', 'rejected');
 
   const { data: venues, error } = await query;
   if (error) { list.innerHTML = `<div style="color:red">Error: ${escHtml(error.message)}</div>`; return; }
@@ -1138,8 +1139,8 @@ async function adminTab(tab) {
     return;
   }
 
-  const isRejected = v => v.host_notes?.includes('REJECTED');
-  const statusOf   = v => v.is_active ? 'approved' : (isRejected(v) ? 'rejected' : 'pending');
+  const isRejected = v => v.venue_status === 'rejected';
+  const statusOf   = v => v.venue_status || 'pending';
 
   list.innerHTML = venues.map(v => {
     const status = statusOf(v);
@@ -1218,11 +1219,11 @@ async function openAdminModal(venueId) {
 
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
       <button class="btn-review" onclick="closeAdminModal()">Close</button>
-      ${!v.is_active && !v.host_notes?.includes('REJECTED') ? `
+      ${v.venue_status === 'pending' ? `
         <button class="btn-approve" onclick="adminApprove('${v.id}')">✅ Approve Listing</button>
         <button class="btn-reject"  onclick="adminRejectPrompt('${v.id}')">❌ Reject Listing</button>
       ` : ''}
-      ${v.is_active ? `<button class="btn-reject" onclick="adminRevoke('${v.id}')">Revoke Listing</button>` : ''}
+      ${v.venue_status === 'approved' ? `<button class="btn-reject" onclick="adminRevoke('${v.id}')">Revoke Listing</button>` : ''}
     </div>`;
 
   document.getElementById('adminModal').style.display = 'block';
@@ -1236,11 +1237,7 @@ async function adminApprove(venueId) {
   if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   const note = document.getElementById('adminReviewNote')?.value?.trim() || '';
 
-  const { data: v, error: fetchError } = await db.from('venues').select('host_notes').eq('id', venueId).single();
-  if (fetchError) { showToast('Error: ' + fetchError.message, 'error'); return; }
-
-  const updatedNotes = (v?.host_notes || '') + `\n\n✅ APPROVED by admin on ${new Date().toLocaleDateString('en-IN')}${note ? '\nAdmin note: ' + note : ''}`;
-  const { error } = await db.from('venues').update({ is_active: true, host_notes: updatedNotes }).eq('id', venueId);
+  const { error } = await db.from('venues').update({ venue_status: 'approved', is_active: true }).eq('id', venueId);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
 
   showToast('Venue approved and now live! ✅', 'success');
@@ -1262,9 +1259,7 @@ async function adminRejectPrompt(venueId) {
 }
 
 async function adminReject(venueId, reason) {
-  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
-  const updatedNotes = (v?.host_notes || '') + `\n\n❌ REJECTED by admin on ${new Date().toLocaleDateString('en-IN')}\nReason: ${reason || 'No reason given'}`;
-  const { error } = await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
+  const { error } = await db.from('venues').update({ venue_status: 'rejected', is_active: false }).eq('id', venueId);
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
   showToast('Venue rejected.', 'info');
   closeAdminModal();
@@ -1277,9 +1272,7 @@ async function adminRevoke(venueId) {
   if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   const confirmed = await showConfirm('Revoke this listing? It will go offline immediately.');
   if (!confirmed) return;
-  const { data: v } = await db.from('venues').select('host_notes').eq('id', venueId).single();
-  const updatedNotes = (v?.host_notes || '') + `\n\n⏸ REVOKED by admin on ${new Date().toLocaleDateString('en-IN')}`;
-  await db.from('venues').update({ is_active: false, host_notes: updatedNotes }).eq('id', venueId);
+  await db.from('venues').update({ venue_status: 'revoked', is_active: false }).eq('id', venueId);
   showToast('Listing revoked.', 'info');
   closeAdminModal();
   loadAdminPanel();

@@ -80,8 +80,7 @@ function updateNavForUser(profile) {
       }
       // Check pending count and show badge (exclude rejected venues)
       db.from('venues').select('id', { count: 'exact', head: true })
-        .eq('is_active', false)
-        .not('host_notes', 'like', '%REJECTED%')
+        .eq('venue_status', 'pending')
         .then(({ count }) => {
           if (count > 0) adminLink.textContent = `⚙️ Admin 🔴${count}`;
         });

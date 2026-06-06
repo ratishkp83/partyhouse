@@ -338,3 +338,43 @@ create trigger check_booking_capacity
 --   ARRAY['Couple','Family','Group','Birthday','Anniversary','Corporate'],
 --   '🌃', '🌃 Rooftop', true, true
 -- );
+
+-- ─────────────────────────────────────────────────────────────
+-- C3 FIX: venue_status column (replaces host_notes string-matching)
+-- Run this migration block in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+
+-- 1. Add the column
+alter table venues
+  add column if not exists venue_status text
+    not null default 'pending'
+    check (venue_status in ('pending','approved','rejected','revoked'));
+
+-- 2. Migrate existing data from is_active + host_notes pattern
+update venues set venue_status = 'approved' where is_active = true;
+update venues set venue_status = 'rejected' where is_active = false and host_notes like '%REJECTED%';
+update venues set venue_status = 'pending'  where is_active = false and (host_notes is null or host_notes not like '%REJECTED%');
+
+-- 3. Lock down RLS: hosts cannot write venue_status (only admins can)
+drop policy if exists "venues_insert_host" on venues;
+drop policy if exists "venues_update_host" on venues;
+
+create policy "venues_insert_host" on venues for insert
+  with check (
+    auth.uid() = host_id
+    and is_active = false
+    and venue_status = 'pending'
+  );
+
+create policy "venues_update_host" on venues for update
+  using  (auth.uid() = host_id)
+  with check (
+    auth.uid() = host_id
+    and is_active = false
+    and venue_status = (select venue_status from venues where id = venues.id)
+  );
+
+-- 4. Add host-own select policy so hosts can see their pending/rejected venues
+drop policy if exists "venues_select_own" on venues;
+create policy "venues_select_own" on venues for select
+  using (auth.uid() = host_id);
