@@ -419,14 +419,17 @@ function populateBookingSummary() {
   // Price breakdown in step 1 — use calcPrice() result so weekend rate is reflected (C2)
   const pb = document.getElementById('bookingPriceBreakdown');
   if (pb) {
-    const rateLabel = price.rate !== v.price_per_hour
-      ? `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>`
-      : `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours`;
+    // M2: build rateLabel via DOM to avoid mixing raw HTML with dynamic values in innerHTML
+    const isWeekend   = price.rate !== v.price_per_hour;
+    const rateLabelTxt = `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours`;
+    const weekendBadge = isWeekend
+      ? ` <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>`
+      : '';
     pb.innerHTML = `
-      <div class="pb-row"><span>${rateLabel}</span><span>₹${(price.rate * Number(hours)).toLocaleString('en-IN')}</span></div>
-      <div class="pb-row"><span>Cleaning & setup fee</span><span>₹${(v.cleaning_fee ?? 0).toLocaleString('en-IN')}</span></div>
-      <div class="pb-row"><span>PartyHouse service fee</span><span>₹${price.fee.toLocaleString('en-IN')}</span></div>
-      <div class="pb-row total"><span>Total (INR)</span><span>₹${price.total.toLocaleString('en-IN')}</span></div>`;
+      <div class="pb-row"><span>${escHtml(rateLabelTxt)}${weekendBadge}</span><span>₹${escHtml(String((price.rate * Number(hours)).toLocaleString('en-IN')))}</span></div>
+      <div class="pb-row"><span>Cleaning &amp; setup fee</span><span>₹${escHtml(String((v.cleaning_fee ?? 0).toLocaleString('en-IN')))}</span></div>
+      <div class="pb-row"><span>PartyHouse service fee</span><span>₹${escHtml(String(price.fee.toLocaleString('en-IN')))}</span></div>
+      <div class="pb-row total"><span>Total (INR)</span><span>₹${escHtml(String(price.total.toLocaleString('en-IN')))}</span></div>`;
   }
 
   const totalEl = document.getElementById('bookingConfirmTotal');
