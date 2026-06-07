@@ -270,27 +270,39 @@
         <div class="footer-grid">
           <div class="footer-col">
             <h4>Support</h4>
-            <a>Help Center</a><a>Safety Info</a><a>Cancellation Policy</a><a>Report an Issue</a>
+            <a onclick="openContactModal()">Help Center</a>
+            <a onclick="openContactModal()">Safety Info</a>
+            <a onclick="openContactModal()">Cancellation Policy</a>
+            <a onclick="document.getElementById('contactSubject').value='bug';openContactModal()">Report an Issue</a>
           </div>
           <div class="footer-col">
             <h4>Party Types</h4>
-            <a>Couple Venues</a><a>Family Parties</a><a>Group Events</a><a>Birthday Venues</a>
+            <a onclick="heroSearchByOccasion('Couple')">Couple Venues</a>
+            <a onclick="heroSearchByOccasion('Family')">Family Parties</a>
+            <a onclick="heroSearchByOccasion('Group')">Group Events</a>
+            <a onclick="heroSearchByOccasion('Birthday')">Birthday Venues</a>
           </div>
           <div class="footer-col">
             <h4>Hosting</h4>
-            <a>List Your Venue</a><a>Host Resources</a><a>Pricing Guide</a><a>Host Protection</a>
+            <a onclick="goPage('new-listing')">List Your Venue</a>
+            <a onclick="openContactModal()">Host Resources</a>
+            <a onclick="openContactModal()">Pricing Guide</a>
+            <a onclick="openContactModal()">Host Protection</a>
           </div>
           <div class="footer-col">
             <h4>PartyHouse</h4>
-            <a>About Us</a><a>Careers</a><a>Press</a><a>Gift Cards</a>
+            <a onclick="openContactModal()">About Us</a>
+            <a onclick="openContactModal()">Careers</a>
+            <a onclick="openContactModal()">Press</a>
+            <a onclick="openContactModal()">Gift Cards</a>
           </div>
         </div>
         <div class="footer-bottom">
-          <div>© 2026 PartyHouse, Inc. · Privacy · Terms · Sitemap</div>
+          <div>© 2026 PartyHouse, Inc. · <a onclick="openContactModal()" class="footer-inline-link">Privacy</a> · <a onclick="openContactModal()" class="footer-inline-link">Terms</a> · <a onclick="goPage('search')" class="footer-inline-link">Sitemap</a></div>
           <div class="footer-social">
-            <div class="social-icon" data-tip="Follow on Instagram">📷</div>
-            <div class="social-icon" data-tip="Follow on Facebook">f</div>
-            <div class="social-icon" data-tip="Follow on Twitter">𝕏</div>
+            <div class="social-icon" data-tip="Follow on Instagram" onclick="openContactModal()">📷</div>
+            <div class="social-icon" data-tip="Follow on Facebook" onclick="openContactModal()">f</div>
+            <div class="social-icon" data-tip="Follow on Twitter" onclick="openContactModal()">𝕏</div>
           </div>
         </div>
       </div>

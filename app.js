@@ -67,6 +67,13 @@ function heroSearch() {
   loadSearch({ city: city || undefined, occasion: occ || undefined, minCapacity: guests });
 }
 
+function heroSearchByOccasion(occasion) {
+  const no = document.getElementById('navPartyType');
+  if (no) no.value = occasion;
+  goPage('search');
+  loadSearch({ occasion });
+}
+
 // ── Confetti ──────────────────────────────────────────────────
 (function spawnConfetti() {
   const container = document.getElementById('confetti');
