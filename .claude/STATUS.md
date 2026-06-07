@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-07 (Session 20)  
+**Last updated:** 2026-06-07 (Session 21)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -21,7 +21,7 @@ PartyHouse is a party venue booking platform — a purpose-specific alternative 
 | Service | Status | Details |
 |---|---|---|
 | GitHub Pages | ✅ Live | https://ratishkp83.github.io/partyhouse/ |
-| Supabase DB | ✅ Live | Schema deployed, RLS hardened (Session 20 security pass) |
+| Supabase DB | ✅ Live | Schema deployed, RLS hardened (Sessions 20 + 21 security passes) |
 | Email auth | ✅ Working | Sign up / login functional |
 | Google OAuth | ✅ Done | Redirect URI already in Google Cloud Console |
 | Supabase Storage | ✅ Done | Buckets `venue-photos` and `avatars` created, RLS policies applied |
@@ -88,7 +88,9 @@ partyhouse/
 - Profile auto-created on signup via `handle_new_user()` trigger
 - Booking `confirmation_code` auto-generated via trigger (format: `PH-MUM-20260607-143052-491`)
 - `rating_avg` and `review_count` on venues auto-updated via `update_venue_rating()` trigger
-- `prevent_double_booking` trigger fires on `INSERT OR UPDATE` — checks time slot conflicts
+- `prevent_double_booking` trigger fires on `INSERT OR UPDATE` — checks time slot conflicts using `pg_advisory_xact_lock` to close race window
+- `recompute_booking_price` trigger fires on `INSERT` — overwrites client-submitted price fields with server-computed values from `venues` table
+- `check_no_self_booking` trigger fires on `INSERT` — rejects bookings where `guest_id = host_id`
 - All tables have RLS enabled and hardened (see §6)
 
 ### `venue_status` values (added Session 20 — replaces host_notes string-matching)
@@ -143,7 +145,7 @@ Messages.subscribe(otherUserId, callback)
 
 Notify.venueApproved(venueId, adminNote)   // calls Edge Function (admin JWT required)
 Notify.venueRejected(venueId, reason)      // calls Edge Function (admin JWT required)
-Notify.venueRevoked(venueId)              // calls Edge Function (admin JWT required)
+Notify.venueRevoked(venueId)               // calls Edge Function (admin JWT required)
 ```
 
 ### Global state
@@ -158,39 +160,47 @@ VALID_AMENITIES    // ['DJ / Sound', 'Party Lights', ...] — enum constants
 
 ---
 
-## 6. Security Status — Session 20: Full Adversarial Review Complete ✅
+## 6. Security Status — Sessions 20 + 21: Full Adversarial Review Complete ✅
 
-Session 20 was a dedicated security hardening session. A full adversarial code review identified 25 findings across all severities. All 25 are resolved.
+Sessions 20 and 21 were dedicated security hardening sessions. A full adversarial QA pass (live site + code analysis) identified 24 findings across all severities. All 24 are resolved.
 
-### All findings and their fixes
+### Session 21 fixes (this session)
 
-| # | Severity | Issue | Fix | Commits |
+| # | Severity | Issue | Fix | Layer |
 |---|---|---|---|---|
-| C1 | 🔴 Critical | Role escalation via `updateProfile` — `profiles_update_own` had no `WITH CHECK` | Added `WITH CHECK (role = current role)` to RLS policy | `5049d7b` |
-| C2 | 🔴 Critical | Edge Function `notify` had no auth — anyone could send fraudulent emails | Added `assertAdmin()` JWT verification; DB webhook path exempt | `422f339`, `2f65b38` |
-| C3 | 🔴 Critical | `host_notes` string-matching (`REJECTED`) used as venue status flag — hosts could clear it | Added `venue_status` column with DB enum constraint; removed all string-matching | `6c6e6b9` |
-| C4 | 🔴 Critical | `cover_emoji` rendered unescaped into `innerHTML` in 5 places — stored XSS | Wrapped all renders in `escHtml()`; added `sanitiseEmoji()` on save | `5f6da56` |
-| H1 | 🟠 High | `confirmPayment()` didn't re-validate date — past dates accepted via devtools | Re-validate in `confirmPayment()`; DB `CHECK (party_date >= current_date)` | `05c74e1` |
-| H2 | 🟠 High | Host booking update `WITH CHECK` missing `auth.uid()` binding | Tightened both guest and host booking update policies | `05c74e1` |
-| H3 | 🟠 High | Storage buckets had no RLS policies | Added upload/delete/read policies for `venue-photos` and `avatars` | `05c74e1` |
-| H4 | 🟠 High | `Messages.getInbox()` fetched all messages with no limit | Added `.limit(200)` | `05c74e1` |
-| H5 | 🟠 High | Hosts couldn't view their own inactive venues (`venues_select_active` blocked them) | Added `venues_select_own` policy (done in C3 migration) | `6c6e6b9` |
-| H6 | 🟠 High | User values injected raw into email HTML templates | Added `esc()` helper in Edge Function; all values escaped | `422f339` |
-| H7 | 🟠 High | `reviews_update_own` had no `WITH CHECK` — reviewers could change rating/venue post-submission | Added `WITH CHECK` locking venue_id, booking_id, rating range | `05c74e1` |
-| M1 | 🟡 Medium | Confirmation code 4-digit random — collision-prone at scale (birthday paradox) | Replaced with timestamp + 3-digit random: `PH-MUM-20260607-143052-491` | `9e00261` |
-| M2 | 🟡 Medium | `rateLabel` mixed raw `<span>` HTML with dynamic values in `innerHTML` | Separated text from badge HTML; `escHtml()` on all numeric values | `c307d8e` |
-| M3 | 🟡 Medium | Cleaning fee `\|\|3500` treated `0` as falsy — showed ₹3,500 for free-cleaning venues | Changed to `?? 0` | `05c74e1` |
-| M4 | 🟡 Medium | `Venues.update()` missing `Auth.requireAuth()` guard — TypeError on expired session | Added guard | `865be55` |
-| M5 | 🟡 Medium | No server-side validation on `hours`, `guests_count`, `total_price` | Added DB `CHECK` constraints | `05c74e1` |
-| M6 | 🟡 Medium | Wishlist RLS allowed saving inactive/unapproved venues | Split policy — insert requires `is_active = true AND venue_status = 'approved'` | `2525b62` |
-| M7 | 🟡 Medium | `prevent_double_booking` trigger only fired on `INSERT` — status reinstatement bypass | Extended trigger to `BEFORE INSERT OR UPDATE` | `fdeaf30` |
-| M8 | 🟡 Medium | `host_notes` grew unbounded via append-on-every-admin-action | Capped at 2000 chars in JS (DB column doesn't exist in live DB) | `f5cca76` |
-| L1 | 🟢 Low | Anon key hardcoded in public JS | Accepted risk — standard Supabase client pattern | — |
-| L2 | 🟢 Low | Calendar `calNextMonth()` had no upper bound | Capped at 18 months ahead | `a413be4` |
-| L3 | 🟢 Low | No CSP headers | Added `<meta http-equiv="Content-Security-Policy">` to `index.html` | `a413be4` |
-| L4 | 🟢 Low | `adminRevoke()` didn't email host | Added `Notify.venueRevoked()` call and Edge Function handler | `a413be4` |
-| L5 | 🟢 Low | Host profile UUID exposed in public venue card joins | Removed `id` and `avatar_url` from unauthenticated `getFeatured`/`getAll` joins | `a413be4` |
-| L6 | 🟢 Low | `venue_type`, `occasions`, `amenities` had no enum constraints | DB `CHECK` constraint on `venue_type`; JS sanitisation of arrays on submit | `a413be4` |
+| C1 | 🔴 Critical | Host could book their own venue — no server-side guard | `check_no_self_booking` DB trigger + JS early-exit in `startBooking()` | SQL + JS |
+| C2 | 🔴 Critical | DOM price manipulation — client-submitted `total_price` stored without recomputation | `recompute_booking_price` trigger rewrites all price fields from `venues` table on every INSERT | SQL |
+| C3 | 🔴 Critical | Admin page rendered for non-admins via `goPage('admin')` | Role gate added at top of `goPage('admin')` block — bounces non-admins to home | JS |
+| C4 | 🔴 Critical | Realtime channel leak — duplicate WebSocket subscriptions on rapid navigation | `db.removeChannel()` called in `goPage()`, `openConvo()`, and `closeChatPanel()` | JS |
+| H1 | 🟠 High | Past-date booking accepted if DB constraint not applied | `bookings_party_date_future` CHECK constraint applied; JS re-validates in `confirmPayment()` | SQL |
+| H5 | 🟠 High | Guest could modify `total_price` alongside status cancellation | `bookings_update_guest` WITH CHECK now locks all financial fields to existing values | SQL |
+| H6 | 🟠 High | Expired session caused unhandled crash on DB write | Already handled — `try/catch` in all submit handlers confirmed present | JS (existing) |
+| H7 | 🟠 High | Double-booking race condition — trigger SELECT not atomic | `pg_advisory_xact_lock` added to `check_booking_conflict()` to serialise concurrent inserts per venue+date | SQL |
+| M1 | 🟡 Medium | Login error revealed whether email exists | `Auth.signIn` now always shows `'Invalid email or password'`; `Auth.signUp` maps `already registered` to a safe message | JS |
+| M2 | 🟡 Medium | XSS via `cover_emoji` field | `sanitiseEmoji()` strips HTML and enforces 8-char max; all renders use `escHtml()` | JS (existing) |
+| M3 | 🟡 Medium | Stored XSS in message content | `appendBubble()` uses `escHtml(msg.content)` — not raw innerHTML | JS (existing) |
+| M4 | 🟡 Medium | Weekend rate not applied in booking | `calcPrice()` checks day-of-week; `recompute_booking_price` trigger does same server-side | JS + SQL (existing) |
+| M5 | 🟡 Medium | Rejected venues appeared in pending admin tab | `adminTab()` queries `venue_status` directly — no string-matching | JS (existing) |
+| M6 | 🟡 Medium | Calendar had no upper bound on month navigation | `calNextMonth()` capped at 18 months ahead | JS (existing) |
+| M7 | 🟡 Medium | Search filters reset on venue navigate + back | `loadSearch()` pushes state to URL hash; `popstate` listener restores filters on back | JS |
+| M8 | 🟡 Medium | Orphaned pending booking created on mid-wizard abandonment | `goPage()` cancels dangling pending booking before switching pages | JS |
+| L1 | 🟢 Low | Layout overflow at 375px viewport | Deferred — mobile responsive audit pending | — |
+| L2 | 🟢 Low | Cross-tab session bleed on OAuth redirect | Accepted risk — standard Supabase localStorage behaviour | — |
+| L3 | 🟢 Low | Wishlist heart state stale across tabs | Deferred — no Realtime subscription on wishlists | — |
+| L4 | 🟢 Low | Confirmation code format mismatch (old trigger format on live site) | Deferred — apply M1 Fix migration from schema.sql in next SQL pass | SQL pending |
+| L5 | 🟢 Low | Blank page with JS disabled | Deferred — add `<noscript>` fallback to index.html | HTML pending |
+
+### Session 20 fixes (previous session)
+
+| # | Severity | Issue | Fix |
+|---|---|---|---|
+| C1 | 🔴 Critical | Role escalation via `updateProfile` | `WITH CHECK (role = current role)` in RLS |
+| C2 | 🔴 Critical | Edge Function `notify` unauthenticated | `assertAdmin()` JWT verification added |
+| C3 | 🔴 Critical | `host_notes` string-matching as status flag | `venue_status` enum column added |
+| C4 | 🔴 Critical | `cover_emoji` unescaped innerHTML — stored XSS | `escHtml()` + `sanitiseEmoji()` everywhere |
+| H1–H7 | 🟠 High | 7 high severity issues | See Session 20 table in git history |
+| M1–M8 | 🟡 Medium | 8 medium severity issues | See Session 20 table in git history |
+| L1–L6 | 🟢 Low | 6 low severity issues | See Session 20 table in git history |
 
 ---
 
@@ -201,10 +211,13 @@ Session 20 was a dedicated security hardening session. A full adversarial code r
 | Full SPA routing (goPage) | ✅ |
 | Supabase auth — email + Google OAuth | ✅ |
 | Venue browse + search + filters | ✅ |
+| Search filter persistence (URL hash + popstate) | ✅ |
 | Venue detail page | ✅ |
 | Availability calendar (month-view, booked dates blocked, time conflict check) | ✅ |
 | Weekend rate pricing (Sat/Sun auto-switch, visual label) | ✅ |
 | Multi-step booking flow (3 steps) | ✅ |
+| Server-side price recomputation (bypass-proof) | ✅ |
+| Host self-booking prevention (DB trigger + JS guard) | ✅ |
 | Razorpay payment | ❌ Blocked on account |
 | My Bookings (trips page) | ✅ |
 | Wishlist / saved venues | ✅ |
@@ -212,11 +225,13 @@ Session 20 was a dedicated security hardening session. A full adversarial code r
 | Edit Listing (4-tab modal, pre-filled, re-review on name/desc change) | ✅ |
 | 8-step venue listing wizard | ✅ |
 | Admin panel (pending/approved/rejected tabs, approve/reject/revoke) | ✅ |
+| Admin page role gate (non-admins bounced to home) | ✅ |
 | Admin email notifications (Edge Function + Resend, auth-guarded) | ✅ |
 | Messaging UI (inbox + chat + real-time + unread badge) | ✅ |
+| Realtime channel cleanup (no leak on navigation) | ✅ |
 | Contact Host button on listing page | ✅ |
 | Seed data (8 venues, 3 cities) | ✅ Ready to run |
-| Security hardening (25 findings fixed) | ✅ Session 20 |
+| Security hardening (Sessions 20 + 21) | ✅ |
 
 ---
 
@@ -283,7 +298,7 @@ Paste this at the start of the new session:
 
 > "I'm resuming work on PartyHouse, a party venue booking platform. GitHub: https://github.com/ratishkp83/partyhouse · Live: https://ratishkp83.github.io/partyhouse/ · Supabase: https://hxeskohikmtpzfrmovot.supabase.co · Please clone the repo and read `.claude/STATUS.md` before we continue."
 
-Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare migration, or a new feature.
+Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare migration, remaining Low bugs, or a new feature.
 
 **GitHub token scope needed:** `repo` only. Create at: https://github.com/settings/tokens/new
 
@@ -313,15 +328,29 @@ Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare mi
 | 18 | 2026-06-06 | QA re-run: fixed H1b/H1c/H1d (venueCard XSS), H2 (double-submit), H3/H4/M1-M3 |
 | 19 | 2026-06-06 | Full feature QA pass — STATUS.md handoff written |
 | 20 | 2026-06-07 | Full adversarial code review: 25 findings identified and all fixed. venue_status column added, Edge Function auth-guarded, storage RLS deployed, CSP added. |
+| 21 | 2026-06-07 | Second adversarial QA pass (live site + code): 24 findings. Fixed all 4 Critical + 5 High + 8 Medium in app.js, supabase.js, and SQL. 5 Low deferred. |
 
 ---
 
-## 13. Known Remaining Risks (Architectural — Not Yet Fixed)
+## 13. Known Remaining Work
 
-These are scale/architecture concerns from the Session 20 review. Not blocking for MVP but worth addressing before launch:
+### Low severity bugs (deferred from Session 21)
+| # | Issue | Fix needed |
+|---|---|---|
+| L1 | Layout overflow at 375px mobile viewport | Responsive audit of booking widget in styles.css |
+| L2 | Cross-tab session bleed on OAuth redirect | Accepted risk — standard Supabase localStorage behaviour |
+| L3 | Wishlist heart state stale across tabs | Add Realtime subscription on wishlists table |
+| L4 | Confirmation code format mismatch (old trigger still active on live DB) | Run M1 Fix migration from schema.sql in Supabase SQL Editor |
+| L5 | Blank page with JS disabled | Add `<noscript>` fallback to index.html |
 
+### Architectural concerns (not blocking for MVP)
 1. **Single-file SPA** — all pages load at once. No code splitting or lazy loading. Will get heavy beyond 50+ venues.
 2. **No per-user rate limiting** — `Bookings.create`, `Messages.send`, `Venues.create` can be called in a loop. Relies entirely on Supabase project-level rate limits.
 3. **Admin DB calls in `app.js`** — `adminApprove/Reject/Revoke` call `db.from()` directly, bypassing the `supabase.js` API layer. If RLS changes, these break silently.
 4. **No pagination** — venue grid (limit 24 hardcoded), bookings (unbounded for hosts with many venues), reviews (limit 10).
 5. **`generate_confirmation_code` trigger queries `venues` on every booking insert** — adds a sequential read under high concurrency.
+
+### Next priorities
+1. **Razorpay integration** — unblocked once Razorpay account is set up (see §8)
+2. **Low bug fixes** — L1 mobile layout, L4 confirmation code migration, L5 noscript
+3. **Cloudflare Pages migration** — after full testing (see §9)
