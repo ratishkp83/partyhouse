@@ -97,7 +97,14 @@ function goPage(id) {
   if (id === 'wishlist')     loadWishlist();
   if (id === 'dashboard')    loadDashboard();
   if (id === 'new-listing')  startNewListing();
-  if (id === 'admin')        loadAdminPanel();
+  if (id === 'admin') {
+  if (!currentProfile || currentProfile.role !== 'admin') {
+    goPage('home');
+    showToast('Admin access required', 'error');
+    return;
+    }
+  loadAdminPanel();
+ }
   if (id === 'messages')     loadMessages();
 }
 
