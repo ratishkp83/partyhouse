@@ -1394,6 +1394,44 @@
   </div>
 </div>
 
+<!-- ── Contact Us floating button ─────────────────────────── -->
+<button class="contact-fab" onclick="openContactModal()" aria-label="Contact us" data-tip="Contact us">
+  💬
+</button>
+
+<!-- Contact modal -->
+<div id="contactModal" class="contact-modal-overlay" onclick="closeContactModal(event)" style="display:none">
+  <div class="contact-modal-box" onclick="event.stopPropagation()">
+    <div class="contact-modal-header">
+      <div>
+        <div class="contact-modal-title">Get in Touch</div>
+        <div class="contact-modal-sub">We read every message and respond within 24 hours.</div>
+      </div>
+      <button class="contact-modal-close" onclick="closeContactModal()" aria-label="Close">✕</button>
+    </div>
+    <form class="contact-modal-body" onsubmit="submitContactForm(event)">
+      <label class="contact-label" for="contactSubject">Subject</label>
+      <select id="contactSubject" class="contact-select" required>
+        <option value="" disabled selected>Select a topic…</option>
+        <option value="inquiry">Inquiry</option>
+        <option value="feedback">Feedback</option>
+        <option value="bug">Report a Bug</option>
+        <option value="grievance">Grievance</option>
+      </select>
+      <label class="contact-label" for="contactMessage">Message</label>
+      <textarea
+        id="contactMessage"
+        class="contact-textarea"
+        placeholder="Tell us what’s on your mind…"
+        maxlength="2000"
+        required
+      ></textarea>
+      <div class="contact-char-count"><span id="contactCharCount">0</span> / 2000</div>
+      <button type="submit" class="contact-submit" id="contactSubmitBtn">Send Message</button>
+    </form>
+  </div>
+</div>
+
 <script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>

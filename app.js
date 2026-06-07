@@ -1570,3 +1570,56 @@ function formatMsgTime(iso) {
   if (diff < 7 * 86400000)   return d.toLocaleDateString('en-IN', { weekday: 'short' });
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
+
+// ── Contact Us ────────────────────────────────────────────────────────────────
+
+function openContactModal() {
+  document.getElementById('contactModal').style.display = 'flex';
+  document.getElementById('contactSubject').value = '';
+  document.getElementById('contactMessage').value = '';
+  document.getElementById('contactCharCount').textContent = '0';
+  document.getElementById('contactSubmitBtn').disabled = false;
+  document.getElementById('contactMessage').focus();
+}
+
+function closeContactModal(e) {
+  if (e && e.target !== document.getElementById('contactModal')) return;
+  document.getElementById('contactModal').style.display = 'none';
+}
+
+// char counter
+document.getElementById('contactMessage').addEventListener('input', function () {
+  document.getElementById('contactCharCount').textContent = this.value.length;
+});
+
+async function submitContactForm(e) {
+  e.preventDefault();
+  const subject = document.getElementById('contactSubject').value;
+  const message = document.getElementById('contactMessage').value.trim();
+  const btn     = document.getElementById('contactSubmitBtn');
+
+  if (!subject) { showToast('Please select a subject', 'warn'); return; }
+  if (message.length < 10) { showToast('Message too short (min 10 characters)', 'warn'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  const payload = {
+    subject,
+    message,
+    user_id:    currentUser?.id    || null,
+    user_email: currentUser?.email || null,
+  };
+
+  const { error } = await db.from('contact_submissions').insert(payload);
+
+  if (error) {
+    showToast('Could not send — please try again', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Send Message';
+    return;
+  }
+
+  showToast('Message sent! We\'ll get back to you within 24 hours. 🙏', 'success');
+  document.getElementById('contactModal').style.display = 'none';
+}
