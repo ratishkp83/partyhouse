@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-07 (Session 22)  
+**Last updated:** 2026-06-07 (Session 23)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -330,28 +330,53 @@ Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare mi
 | 20 | 2026-06-07 | Full adversarial code review: 25 findings identified and all fixed. venue_status column added, Edge Function auth-guarded, storage RLS deployed, CSP added. |
 | 21 | 2026-06-07 | Second adversarial QA pass (live site + code): 24 findings. Fixed all 4 Critical + 5 High + 8 Medium in app.js, supabase.js, and SQL. 5 Low deferred. |
 | 22 | 2026-06-07 | Fixed 3 Low bugs: L1 mobile responsive (480px breakpoint), L4 confirmation code migration file, L5 noscript fallback |
+| 23 | 2026-06-07 | Adversarial code review — scale, security, functional (Session 23). Findings documented below. |
 
 ---
 
 ## 13. Known Remaining Work
 
 ### Low severity bugs
-| # | Issue | Fix needed |
+| # | Issue | Status |
 |---|---|---|
-| L1 | Layout overflow at 375px mobile viewport | ✅ Fixed — full 480px responsive block in styles.css |
+| L1 | Layout overflow at 375px mobile viewport | Fixed — full 480px responsive block in styles.css |
 | L2 | Cross-tab session bleed on OAuth redirect | Accepted risk — standard Supabase localStorage behaviour |
-| L3 | Wishlist heart state stale across tabs | ⏸ Deferred — needs Realtime subscription on wishlists table |
-| L4 | Confirmation code format mismatch | ✅ Fixed — run supabase/migrations/fix_confirmation_code.sql in Supabase SQL Editor |
-| L5 | Blank page with JS disabled | ✅ Fixed — noscript banner added to index.html |
+| L3 | Wishlist heart state stale across tabs | Deferred — needs Realtime subscription on wishlists table |
+| L4 | Confirmation code format mismatch | Fixed + migrated — function updated in live Supabase DB |
+| L5 | Blank page with JS disabled | Fixed — noscript banner added to index.html |
+
+### Session 23 adversarial review findings (scale + security + functional)
+**SQL migration required: run `supabase/migrations/session23_scale_security.sql` in Supabase SQL Editor**
+
+| # | Severity | Issue | Status |
+|---|---|---|---|
+| C1 | Critical | No message length limit — DB storage DoS | Fixed — JS guard (2000 chars) + DB constraint in migration |
+| C2 | Critical | `updateStatus()` accepted arbitrary status strings | Fixed — allowlist in supabase.js |
+| C3 | Critical | Photo upload trusted raw client file extension | Fixed — extension whitelist in uploadPhoto() |
+| H1 | High | No rate limit on Messages.send() | Fixed — 500ms JS cooldown + DB trigger (20/min) in migration |
+| H2 | High | Admin DB calls bypass API layer; no state machine | Fixed — status constraints on approve/reject/revoke |
+| H3 | High | Price recomputation trigger missing from live DB | Fixed — trigger added in migration |
+| H4 | High | cancelBooking() no auth check before API call | Fixed — currentUser guard added |
+| H5 | High | Wishlist.toggle() insert error silently ignored | Fixed — error checked before UI update |
+| H6 | High | getConversation() OR filter used unvalidated UUID | Fixed — UUID_RE validation before filter |
+| M1 | Medium | Confirmation code breaks on empty/emoji city | Fixed — DB constraint + trigger fallback in migration |
+| M2 | Medium | Race condition on rapid venue navigation | Fixed — request token (_venueLoadToken) in loadVenuePage |
+| M3 | Medium | Inbox dedup O(n) client-side, hides old convos | Deferred — needs server-side DISTINCT ON query |
+| M4 | Medium | guestCount stale across venue navigations | Fixed — clamped to loaded venue capacity in loadVenuePage |
+| M5 | Medium | PII stored forever in host_notes | Deferred — architectural change, pre-Razorpay |
+| M6 | Medium | No query cache — every navigation hits Postgres | Deferred — low priority at current scale |
+| M7 | Medium | Dashboard loads unbounded bookings | Fixed — limit(100) added to getHostBookings() |
+| M8 | Medium | Toast used unloaded font DM Sans | Fixed — changed to Inter |
+| L1-L5 | Low | Various minor issues | Noted — see review doc |
 
 ### Architectural concerns (not blocking for MVP)
-1. **Single-file SPA** — all pages load at once. No code splitting or lazy loading. Will get heavy beyond 50+ venues.
-2. **No per-user rate limiting** — `Bookings.create`, `Messages.send`, `Venues.create` can be called in a loop. Relies entirely on Supabase project-level rate limits.
-3. **Admin DB calls in `app.js`** — `adminApprove/Reject/Revoke` call `db.from()` directly, bypassing the `supabase.js` API layer. If RLS changes, these break silently.
-4. **No pagination** — venue grid (limit 24 hardcoded), bookings (unbounded for hosts with many venues), reviews (limit 10).
-5. **`generate_confirmation_code` trigger queries `venues` on every booking insert** — adds a sequential read under high concurrency.
+1. **Single-file SPA** — all pages load at once. No code splitting or lazy loading.
+2. **Admin DB calls in app.js** — partially mitigated (status constraints S23); full fix is moving into supabase.js.
+3. **No pagination** — venue grid (limit 24), reviews (limit 10). Host bookings now capped at 100.
+4. **Inbox dedup** — client-side O(n) on 200 rows; needs server-side DISTINCT ON at scale.
+5. **PII in host_notes** — phone/email stored in text field; should move to profiles table.
 
 ### Next priorities
 1. **Razorpay integration** — unblocked once Razorpay account is set up (see §8)
-2. **Low bug fixes** — L3 wishlist realtime (deferred), L2 accepted risk
+2. **Run Session 23 SQL migration** — supabase/migrations/session23_scale_security.sql in Supabase SQL Editor
 3. **Cloudflare Pages migration** — after full testing (see §9)

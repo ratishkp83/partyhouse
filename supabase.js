@@ -256,7 +256,11 @@ const Venues = {
   },
 
   async uploadPhoto(file, venueId) {
-    const ext  = file.name.split('.').pop();
+    // C3: whitelist extensions — never trust the client filename
+    const ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    const rawExt = file.name.split('.').pop().toLowerCase();
+    const ext = ALLOWED_EXTS.includes(rawExt) ? rawExt : null;
+    if (!ext) { showToast('Unsupported file type. Use JPG, PNG, WebP, or GIF.', 'error'); return null; }
     const path = `${venueId}/${Date.now()}.${ext}`;
     const { error } = await db.storage.from('venue-photos').upload(path, file);
     if (error) { showToast('Photo upload failed: ' + error.message, 'error'); return null; }
@@ -349,11 +353,19 @@ const Bookings = {
       .from('bookings')
       .select(`*, venue:venues(id, name, city), guest:profiles(id, full_name, avatar_url)`)
       .in('venue_id', venueIds)
-      .order('party_date', { ascending: true });
+      .order('party_date', { ascending: true })
+      .limit(100);  // M7: prevent unbounded fetch for hosts with many bookings
     return data || [];
   },
 
   async updateStatus(bookingId, status) {
+    // C2: allowlist valid transitions — never forward arbitrary strings to DB
+    const VALID_STATUSES = ['confirmed', 'cancelled', 'completed'];
+    if (!VALID_STATUSES.includes(status)) {
+      console.error('updateStatus: invalid status', status);
+      showToast('Invalid booking status.', 'error');
+      return null;
+    }
     const { data, error } = await db
       .from('bookings')
       .update({ status })
@@ -388,11 +400,13 @@ const Wishlist = {
     if (!Auth.requireAuth('save a venue')) return;
     const isSaved = heartBtn.classList.contains('saved');
     if (isSaved) {
-      await db.from('wishlists').delete().eq('user_id', currentUser.id).eq('venue_id', venueId);
+      const { error } = await db.from('wishlists').delete().eq('user_id', currentUser.id).eq('venue_id', venueId);
+      if (error) { showToast('Could not remove from wishlist', 'error'); return; }
       heartBtn.classList.remove('saved');
       showToast('Removed from wishlist', 'info');
     } else {
-      await db.from('wishlists').insert({ user_id: currentUser.id, venue_id: venueId });
+      const { error } = await db.from('wishlists').insert({ user_id: currentUser.id, venue_id: venueId });
+      if (error) { showToast('Could not save venue', 'error'); return; }
       heartBtn.classList.add('saved');
       showToast('Saved to wishlist ❤️', 'success');
     }
@@ -418,13 +432,31 @@ const Wishlist = {
 };
 
 // ── Messages API ──────────────────────────────────────────────────────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// H1: per-receiver send throttle — max 1 message per 500ms per receiver
+const _msgLastSent = {};
+
 const Messages = {
 
   async send(receiverId, content, venueId = null, bookingId = null) {
     if (!Auth.requireAuth('send a message')) return null;
+
+    // C1: enforce message length limits
+    const trimmed = (content || '').trim();
+    if (!trimmed) { showToast('Message cannot be empty', 'error'); return null; }
+    if (trimmed.length > 2000) { showToast('Message too long (max 2000 characters)', 'error'); return null; }
+
+    // H1: client-side rate limit — 500ms cooldown per receiver
+    const now = Date.now();
+    if (_msgLastSent[receiverId] && now - _msgLastSent[receiverId] < 500) {
+      showToast('Sending too fast — please wait a moment', 'warn'); return null;
+    }
+    _msgLastSent[receiverId] = now;
+
     const { data, error } = await db
       .from('messages')
-      .insert({ sender_id: currentUser.id, receiver_id: receiverId, content, venue_id: venueId, booking_id: bookingId })
+      .insert({ sender_id: currentUser.id, receiver_id: receiverId, content: trimmed, venue_id: venueId, booking_id: bookingId })
       .select()
       .single();
     if (error) { showToast(error.message, 'error'); return null; }
@@ -433,6 +465,8 @@ const Messages = {
 
   async getConversation(otherUserId) {
     if (!currentUser) return [];
+    // H6: validate UUID before injecting into filter string
+    if (!UUID_RE.test(otherUserId)) { console.error('getConversation: invalid UUID', otherUserId); return []; }
     const { data } = await db
       .from('messages')
       .select(`*, sender:profiles!sender_id(id, full_name, avatar_url)`)
@@ -508,7 +542,7 @@ function showToast(message, type = 'info') {
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
     background:#1e1e1e; border:1.5px solid ${colors[type]};
     color:#f0ece6; padding:12px 22px; border-radius:999px;
-    font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500;
+    font-family:'Inter',sans-serif; font-size:14px; font-weight:500;
     box-shadow:0 8px 32px rgba(0,0,0,.5); z-index:9999;
     animation:slideUp .25s ease; white-space:nowrap;
   `;
@@ -607,10 +641,13 @@ async function openVenue(venueId) {
 }
 
 // ── Selected venue state ──────────────────────────────────────────────────────
-let selectedVenueId  = null;
+let selectedVenueId   = null;
 let selectedVenueData = null;
+let _venueLoadToken   = 0;  // M2: increment on each openVenue call; stale responses bail out
 
 async function loadVenuePage(venueId) {
+  const myToken = ++_venueLoadToken;
+
   // Show skeleton while loading
   document.getElementById('listingTitle').textContent = 'Loading…';
   document.getElementById('listingSub').textContent   = '';
@@ -620,8 +657,19 @@ async function loadVenuePage(venueId) {
     Reviews.getForVenue(venueId)
   ]);
 
+  // M2: if another openVenue() fired while we were fetching, discard this result
+  if (myToken !== _venueLoadToken) return;
+
   if (!venue) { showToast('Venue not found', 'error'); goPage('search'); return; }
   selectedVenueData = venue;
+
+  // M4: clamp guestCount to the loaded venue's capacity now that we have real data
+  const maxCap = venue.capacity || 50;
+  if (guestCount > maxCap) {
+    guestCount = maxCap;
+    const gcEl = document.getElementById('guestCount');
+    if (gcEl) gcEl.textContent = guestCount;
+  }
 
   // Init availability calendar
   initCalendar(venueId);

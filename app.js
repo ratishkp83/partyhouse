@@ -564,6 +564,8 @@ async function loadMyBookings() {
 }
 
 async function cancelBooking(bookingId) {
+  // H4: verify ownership client-side before sending to DB
+  if (!currentUser) { showToast('Please log in', 'error'); return; }
   const confirmed = await showConfirm('Cancel this booking? This cannot be undone.');
   if (!confirmed) return;
   await Bookings.cancel(bookingId);
@@ -1298,7 +1300,11 @@ async function adminApprove(venueId) {
   if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   const note = document.getElementById('adminReviewNote')?.value?.trim() || '';
 
-  const { error } = await db.from('venues').update({ venue_status: 'approved', is_active: true }).eq('id', venueId);
+  // H2: explicit column allowlist — never a bare update without constraints
+  const { error } = await db.from('venues')
+    .update({ venue_status: 'approved', is_active: true })
+    .eq('id', venueId)
+    .eq('venue_status', 'pending');   // only pending venues can be approved — prevents replay
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
 
   showToast('Venue approved and now live! ✅', 'success');
@@ -1320,7 +1326,10 @@ async function adminRejectPrompt(venueId) {
 }
 
 async function adminReject(venueId, reason) {
-  const { error } = await db.from('venues').update({ venue_status: 'rejected', is_active: false }).eq('id', venueId);
+  const { error } = await db.from('venues')
+    .update({ venue_status: 'rejected', is_active: false })
+    .eq('id', venueId)
+    .in('venue_status', ['pending', 'approved']);  // H2: only reject venues that are pending or approved
   if (error) { showToast('Error: ' + error.message, 'error'); return; }
   showToast('Venue rejected.', 'info');
   closeAdminModal();
@@ -1333,8 +1342,13 @@ async function adminRevoke(venueId) {
   if (!currentProfile || currentProfile.role !== 'admin') { showToast('Unauthorised', 'error'); return; }
   const confirmed = await showConfirm('Revoke this listing? It will go offline immediately.');
   if (!confirmed) return;
-  await db.from('venues').update({ venue_status: 'revoked', is_active: false }).eq('id', venueId);
-  Notify.venueRevoked(venueId);  // L4: notify host on revocation
+  // H2: only approved venues can be revoked — prevents state machine bypass
+  const { error } = await db.from('venues')
+    .update({ venue_status: 'revoked', is_active: false })
+    .eq('id', venueId)
+    .eq('venue_status', 'approved');
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  Notify.venueRevoked(venueId);
   showToast('Listing revoked.', 'info');
   closeAdminModal();
   loadAdminPanel();
