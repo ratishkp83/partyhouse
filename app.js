@@ -43,6 +43,15 @@ function initCityAutocomplete() {
 }
 document.addEventListener('DOMContentLoaded', initCityAutocomplete);
 
+// M7: restore search filters when user presses browser back
+window.addEventListener('popstate', e => {
+  if (e.state?.filters) {
+    searchFilters = e.state.filters;
+    goPage('search');
+    loadSearch(e.state.filters);
+  }
+});
+
 // Hero search button — syncs values to nav bar then searches
 function heroSearch() {
   const city    = document.getElementById('heroWhere')?.value?.trim() || '';
@@ -82,6 +91,14 @@ function goPage(id) {
   // C4: Clean up realtime channel before leaving messages page
   if (msgRealtimeChannel) { db.removeChannel(msgRealtimeChannel); msgRealtimeChannel = null; }
 
+ // M8: cancel any dangling pending booking if user navigates away mid-wizard
+  if (document.getElementById('page-booking')?.classList.contains('active') && id !== 'booking') {
+    if (createdBooking?.id && createdBooking?.status === 'pending') {
+      Bookings.cancel(createdBooking.id).catch(() => {});
+      createdBooking = null;
+    }
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) { pg.classList.add('active'); window.scrollTo(0, 0); }
@@ -92,7 +109,7 @@ function goPage(id) {
 
   // Trigger data loads per page
   if (id === 'home')         loadHome();
-  if (id === 'search')       loadSearch(searchFilters);
+  if (id === 'search')       loadSearch(searchFilters, true);
   if (id === 'trips')        loadMyBookings();
   if (id === 'wishlist')     loadWishlist();
   if (id === 'dashboard')    loadDashboard();
@@ -126,12 +143,20 @@ async function loadHome() {
 // ── Search ────────────────────────────────────────────────────
 let searchFilters = {};
 
-async function loadSearch(filters = {}) {
+async function loadSearch(filters = {}, updateHash = false) {
   searchFilters = filters;
+  // M7: persist filters in URL hash so back button restores them
+  if (updateHash) {
+    const params = new URLSearchParams();
+    if (filters.city)        params.set('city',     filters.city);
+    if (filters.occasion)    params.set('occasion', filters.occasion);
+    if (filters.maxPrice)    params.set('maxPrice', filters.maxPrice);
+    if (filters.minCapacity) params.set('cap',      filters.minCapacity);
+    history.pushState({ filters }, '', '#search?' + params.toString());
+  }
   const count = document.getElementById('resultsCount');
   if (count) count.textContent = 'Finding venues…';
   await renderVenueGrid('searchGrid', () => Venues.getAll(filters));
-  // Update count from rendered cards
   const cards = document.querySelectorAll('#searchGrid .prop-card');
   if (count) count.textContent = cards.length + ' party venues found';
 }
