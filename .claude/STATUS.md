@@ -1,5 +1,5 @@
 # PartyHouse — Session Handoff Document
-**Last updated:** 2026-06-07 (Session 21)  
+**Last updated:** 2026-06-07 (Session 22)  
 **Live URL:** https://ratishkp83.github.io/partyhouse/  
 **Repo:** https://github.com/ratishkp83/partyhouse  
 **Supabase project:** https://hxeskohikmtpzfrmovot.supabase.co  
@@ -329,19 +329,20 @@ Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare mi
 | 19 | 2026-06-06 | Full feature QA pass — STATUS.md handoff written |
 | 20 | 2026-06-07 | Full adversarial code review: 25 findings identified and all fixed. venue_status column added, Edge Function auth-guarded, storage RLS deployed, CSP added. |
 | 21 | 2026-06-07 | Second adversarial QA pass (live site + code): 24 findings. Fixed all 4 Critical + 5 High + 8 Medium in app.js, supabase.js, and SQL. 5 Low deferred. |
+| 22 | 2026-06-07 | Fixed 3 Low bugs: L1 mobile responsive (480px breakpoint), L4 confirmation code migration file, L5 noscript fallback |
 
 ---
 
 ## 13. Known Remaining Work
 
-### Low severity bugs (deferred from Session 21)
+### Low severity bugs
 | # | Issue | Fix needed |
 |---|---|---|
-| L1 | Layout overflow at 375px mobile viewport | Responsive audit of booking widget in styles.css |
+| L1 | Layout overflow at 375px mobile viewport | ✅ Fixed — full 480px responsive block in styles.css |
 | L2 | Cross-tab session bleed on OAuth redirect | Accepted risk — standard Supabase localStorage behaviour |
-| L3 | Wishlist heart state stale across tabs | Add Realtime subscription on wishlists table |
-| L4 | Confirmation code format mismatch (old trigger still active on live DB) | Run M1 Fix migration from schema.sql in Supabase SQL Editor |
-| L5 | Blank page with JS disabled | Add `<noscript>` fallback to index.html |
+| L3 | Wishlist heart state stale across tabs | ⏸ Deferred — needs Realtime subscription on wishlists table |
+| L4 | Confirmation code format mismatch | ✅ Fixed — run supabase/migrations/fix_confirmation_code.sql in Supabase SQL Editor |
+| L5 | Blank page with JS disabled | ✅ Fixed — noscript banner added to index.html |
 
 ### Architectural concerns (not blocking for MVP)
 1. **Single-file SPA** — all pages load at once. No code splitting or lazy loading. Will get heavy beyond 50+ venues.
@@ -352,5 +353,5 @@ Then tell Claude what you want next — e.g. Razorpay integration, Cloudflare mi
 
 ### Next priorities
 1. **Razorpay integration** — unblocked once Razorpay account is set up (see §8)
-2. **Low bug fixes** — L1 mobile layout, L4 confirmation code migration, L5 noscript
+2. **Low bug fixes** — L3 wishlist realtime (deferred), L2 accepted risk
 3. **Cloudflare Pages migration** — after full testing (see §9)
