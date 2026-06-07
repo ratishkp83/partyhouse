@@ -323,6 +323,11 @@ function calPrevMonth() {
 }
 
 function calNextMonth() {
+  const now     = new Date();
+  const maxYear  = now.getFullYear() + 1;
+  const maxMonth = now.getMonth();   // same month next year = 12 months, +1 for buffer = 13
+  // L2: cap at 18 months ahead so users can't browse to year 9999
+  if (calYear > maxYear || (calYear === maxYear && calMonth >= maxMonth + 6)) return;
   if (calMonth === 11) { calMonth = 0; calYear++; } else calMonth++;
   renderCalendar();
 }
@@ -1027,6 +1032,11 @@ function updateEarningsPreview(rate) {
 }
 
 // ── Submit for review ─────────────────────────────────────────
+// L6: allowed enum values — must match DB check constraints and HTML wizard options
+const VALID_VENUE_TYPES = ['Rooftop / Terrace','Villa / Bungalow','Private Hall','Garden / Lawn','Pool Space','Farmhouse','Penthouse','Unique Venue'];
+const VALID_OCCASIONS   = ['Couple','Family','Birthday','Anniversary','Corporate','Kids'];
+const VALID_AMENITIES   = ['DJ / Sound','Party Lights','Catering','Bar Service','Parking','Swimming Pool','Generator','Air Conditioning','Security'];
+
 async function submitListingForReview() {
   if (!Auth.requireAuth('submit a listing')) return;
 
@@ -1048,6 +1058,15 @@ async function submitListingForReview() {
   wizData.occasions = Array.from(
     document.querySelectorAll('.occ-check input:checked')
   ).map(cb => cb.value);
+
+  // L6: sanitise arrays — strip any values not in the allowed lists (prevents enum bypass)
+  wizData.amenities = (wizData.amenities || []).filter(a => VALID_AMENITIES.includes(a));
+  wizData.occasions = (wizData.occasions || []).filter(o => VALID_OCCASIONS.includes(o));
+  if (wizData.venue_type && !VALID_VENUE_TYPES.includes(wizData.venue_type)) {
+    showToast('Invalid venue type selected.', 'error');
+    btn.disabled = false; btn.textContent = 'Submit for Review';
+    return;
+  }
 
   const payload = {
     ...wizData,
@@ -1283,6 +1302,7 @@ async function adminRevoke(venueId) {
   const confirmed = await showConfirm('Revoke this listing? It will go offline immediately.');
   if (!confirmed) return;
   await db.from('venues').update({ venue_status: 'revoked', is_active: false }).eq('id', venueId);
+  Notify.venueRevoked(venueId);  // L4: notify host on revocation
   showToast('Listing revoked.', 'info');
   closeAdminModal();
   loadAdminPanel();

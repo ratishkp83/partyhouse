@@ -177,7 +177,7 @@ const Venues = {
   async getAll({ city, occasion, minCapacity, maxPrice, type } = {}) {
     let query = db
       .from('venues')
-      .select(`*, host:profiles(id, full_name, avatar_url)`)
+      .select(`*, host:profiles(full_name)`)
       .eq('is_active', true)
       .order('rating_avg', { ascending: false });
 
@@ -205,7 +205,7 @@ const Venues = {
   async getFeatured() {
     const { data } = await db
       .from('venues')
-      .select(`*, host:profiles(id, full_name, avatar_url)`)
+      .select(`*, host:profiles(full_name)`)
       .eq('is_active', true)
       .order('rating_avg', { ascending: false })
       .limit(8);
@@ -693,5 +693,9 @@ const Notify = {
 
   venueRejected(venueId, reason = '') {
     return this._call({ type: 'venue_rejected', venueId, reason });
+  },
+
+  venueRevoked(venueId) {
+    return this._call({ type: 'venue_revoked', venueId });
   },
 };

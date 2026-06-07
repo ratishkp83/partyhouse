@@ -564,3 +564,13 @@ create trigger prevent_double_booking
 -- ─────────────────────────────────────────────────────────────
 alter table venues
   add constraint venues_host_notes_length check (length(host_notes) <= 2000);
+
+-- ─────────────────────────────────────────────────────────────
+-- L6 Fix: enum constraints on venue_type, occasions, amenities
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+alter table venues
+  add constraint venues_venue_type_enum check (venue_type in (
+    'Rooftop / Terrace','Villa / Bungalow','Private Hall','Garden / Lawn',
+    'Pool Space','Farmhouse','Penthouse','Unique Venue'
+  ));

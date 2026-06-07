@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- L3: Content Security Policy — restricts script/style/connect sources to known safe origins -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in;
+  connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.resend.com;
+  frame-ancestors 'none';
+">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="build" content="2026-06-04-v3">
 <title>PartyHouse — Find Your Perfect Party Venue</title>
