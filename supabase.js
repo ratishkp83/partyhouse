@@ -107,7 +107,14 @@ const Auth = {
       email, password,
       options: { data: { full_name: fullName } }
     });
-    if (error) { showToast(error.message, 'error'); return null; }
+    if (error) {
+      // M1: Don't reveal whether the email is already registered
+      const msg = error.message?.includes('already registered')
+        ? 'An account with this email already exists'
+        : error.message;
+      showToast(msg, 'error');
+      return null;
+    }
     showToast('Account created! Check your email to verify.', 'success');
     return data;
   },
@@ -115,7 +122,8 @@ const Auth = {
   async signIn(email, password) {
     showToast('Signing in…', 'info');
     const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error) { showToast(error.message, 'error'); return null; }
+    // M1: Always show generic message — never reveal whether the email exists
+    if (error) { showToast('Invalid email or password', 'error'); return null; }
     // onAuthStateChange fires after this and shows the welcome toast + navigates home
     return data;
   },
