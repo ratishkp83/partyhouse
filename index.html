@@ -270,9 +270,9 @@
         <div class="footer-grid">
           <div class="footer-col">
             <h4>Support</h4>
-            <a onclick="openContactModal()">Help Center</a>
-            <a onclick="openContactModal()">Safety Info</a>
-            <a onclick="openContactModal()">Cancellation Policy</a>
+            <a onclick="openPolicy('support')">Support &amp; Safety</a>
+            <a onclick="openPolicy('cancellation')">Cancellation &amp; Refunds</a>
+            <a onclick="openPolicy('damage')">Damage Claims</a>
             <a onclick="document.getElementById('contactSubject').value='bug';openContactModal()">Report an Issue</a>
           </div>
           <div class="footer-col">
@@ -285,13 +285,18 @@
           <div class="footer-col">
             <h4>Hosting</h4>
             <a onclick="goPage('new-listing')">List Your Venue</a>
-            <a onclick="openContactModal()">Host Resources</a>
-            <a onclick="openContactModal()">Pricing Guide</a>
-            <a onclick="openContactModal()">Host Protection</a>
+            <a onclick="openPolicy('host-resources')">Host Resources</a>
+            <a onclick="openPolicy('host-protection')">Host Protection</a>
+            <a onclick="openContactModal()">Contact Us</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a onclick="openPolicy('privacy')">Privacy Policy</a>
+            <a onclick="openPolicy('terms')">Terms of Use</a>
           </div>
         </div>
         <div class="footer-bottom">
-          <div>© 2026 PartyHouse, Inc. · <a onclick="openContactModal()" class="footer-inline-link">Privacy</a> · <a onclick="openContactModal()" class="footer-inline-link">Terms</a> · <a onclick="goPage('search')" class="footer-inline-link">Sitemap</a></div>
+          <div>© 2026 PartyHouse, Inc. · <a onclick="openPolicy('privacy')" class="footer-inline-link">Privacy</a> · <a onclick="openPolicy('terms')" class="footer-inline-link">Terms</a> · <a onclick="goPage('search')" class="footer-inline-link">Sitemap</a></div>
         </div>
       </div>
     </footer>
@@ -1390,6 +1395,20 @@
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="resolveConfirm(false)" style="padding:10px 20px;border-radius:var(--r-pill);border:1px solid var(--border);background:none;cursor:pointer;font-size:14px;color:var(--muted)">Keep booking</button>
       <button onclick="resolveConfirm(true)"  style="padding:10px 20px;border-radius:var(--r-pill);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:14px;font-weight:600">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Policy modal (shared shell for all policy pages) ──────── -->
+<div id="policyModal" class="policy-modal-overlay" onclick="closePolicy(event)" style="display:none">
+  <div class="policy-modal-box" onclick="event.stopPropagation()">
+    <div class="policy-modal-header">
+      <div class="policy-modal-title" id="policyTitle"></div>
+      <button class="contact-modal-close" onclick="closePolicy()" aria-label="Close">✕</button>
+    </div>
+    <div class="policy-modal-body" id="policyBody"></div>
+    <div class="policy-modal-footer">
+      <button class="contact-submit" onclick="closePolicy()">Got it</button>
     </div>
   </div>
 </div>

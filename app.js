@@ -1630,3 +1630,242 @@ async function submitContactForm(e) {
   showToast('Message sent! We\'ll get back to you within 24 hours. 🙏', 'success');
   document.getElementById('contactModal').style.display = 'none';
 }
+
+// ── Policy modals ─────────────────────────────────────────────────────────────
+
+const POLICIES = {
+
+  'support': {
+    title: 'Support & Safety',
+    body: `
+      <div class="policy-note">PartyHouse Support is available before, during, and after every booking.</div>
+      <h3>Support Channels</h3>
+      <ul>
+        <li><strong>During an active event</strong> — use the priority support channel for urgent safety or venue-access issues.</li>
+        <li><strong>Refund requests & disputes</strong> — submit via email or the Contact form for documented handling.</li>
+        <li><strong>General questions</strong> — use the on-site Contact form for pre-booking help and general enquiries.</li>
+      </ul>
+      <h3>Response Times</h3>
+      <ul>
+        <li>Active-event emergencies: best effort, as fast as possible.</li>
+        <li>Refunds and claims: resolved within 5–7 business days.</li>
+        <li>General enquiries: within 24 hours.</li>
+      </ul>
+      <h3>Safety Rules</h3>
+      <ul>
+        <li>Guests must respect the approved guest count, house rules, and all applicable laws.</li>
+        <li>Illegal activity, weapons, underage drinking, and dangerous overcrowding are strictly prohibited.</li>
+        <li>PartyHouse or the host may stop an event for serious safety or legal violations, without refund where the guest caused the breach.</li>
+        <li>Hosts must accurately disclose all venue restrictions, safety limitations, and event permissions in their listing.</li>
+      </ul>
+      <h3>Incident Reporting</h3>
+      <p>Use the <em>Report an Issue</em> link in the footer or the Contact form to report safety incidents, property damage, or host/guest misconduct. Both hosts and guests can report using the same form.</p>
+    `
+  },
+
+  'cancellation': {
+    title: 'Cancellation & Refunds',
+    body: `
+      <div class="policy-note">This policy applies to one-day event bookings. All refunds are returned to the original payment method, less any non-recoverable processing fees.</div>
+      <h3>Guest Cancellation</h3>
+      <table>
+        <tr><th>When you cancel</th><th>Refund</th></tr>
+        <tr><td>14 or more days before the event</td><td>100%</td></tr>
+        <tr><td>7 to 13 days before the event</td><td>50%</td></tr>
+        <tr><td>Less than 7 days before the event</td><td>0% (reschedule may be requested)</td></tr>
+        <tr><td>No-show</td><td>0%</td></tr>
+      </table>
+      <h3>Reschedule Option</h3>
+      <p>If you cancel less than 7 days before the event, you may request one reschedule subject to host approval and venue availability. Rescheduling is not guaranteed.</p>
+      <h3>Host Cancellation</h3>
+      <p>If a host cancels a confirmed booking, guests receive a full refund and priority assistance in finding an alternative venue.</p>
+      <h3>Force Majeure</h3>
+      <p>Full refunds may be issued for official government restrictions or natural disasters that make the event physically impossible, with documentation required. Standard weather or minor inconveniences do not qualify.</p>
+      <h3>Non-Refundable Situations</h3>
+      <ul>
+        <li>Entry denied due to guest rule violations, false information, or illegal conduct.</li>
+        <li>Excessive headcount beyond the approved guest count.</li>
+        <li>Booking cancelled by PartyHouse for safety or fraud concerns caused by the guest.</li>
+      </ul>
+    `
+  },
+
+  'damage': {
+    title: 'Damage Claims',
+    body: `
+      <div class="policy-note">Hosts must file all claims within 24–48 hours of event end. Late claims may not be considered.</div>
+      <h3>Security Deposits</h3>
+      <p>Many bookings carry a refundable security deposit based on venue type, guest count, and risk profile. The deposit amount is shown on the venue listing and the booking confirmation.</p>
+      <h3>What Qualifies as a Claim</h3>
+      <ul>
+        <li>Provable property damage caused by guests or their vendors.</li>
+        <li>Extraordinary cleaning beyond normal post-event tidying.</li>
+        <li>Missing items documented before and after the event.</li>
+        <li>Material rule violations with evidence.</li>
+      </ul>
+      <h3>What Does Not Qualify</h3>
+      <ul>
+        <li>Normal wear and tear.</li>
+        <li>Pre-existing damage not disclosed in the listing.</li>
+        <li>Claims filed more than 48 hours after the event ends.</li>
+      </ul>
+      <h3>Claim Process</h3>
+      <ul>
+        <li>Host submits photos, videos, invoices, or repair estimates via the Contact form within 48 hours.</li>
+        <li>Guest is notified and given 48 hours to respond.</li>
+        <li>PartyHouse reviews evidence and issues a decision within 5 business days.</li>
+        <li>Deposit deductions matching approved claims are processed; remaining deposit is released to the guest.</li>
+      </ul>
+    `
+  },
+
+  'host-resources': {
+    title: 'Host Resources & Pricing Guide',
+    body: `
+      <h3>Pricing Principles</h3>
+      <p>Price your venue separately from optional add-on services. Transparent line items reduce disputes before booking is confirmed.</p>
+      <ul>
+        <li><strong>Base rate</strong> — hourly price for the venue space only.</li>
+        <li><strong>Weekend rate</strong> — you may set a higher rate for Saturdays and Sundays.</li>
+        <li><strong>Cleaning fee</strong> — a flat fee covering post-event cleaning. Recommended for all venue types.</li>
+        <li><strong>Security deposit</strong> — especially important for pool, rooftop, late-night, and high-capacity events.</li>
+        <li><strong>Optional add-ons</strong> — décor, catering, DJ, staffing, and security should be quoted separately outside the platform.</li>
+      </ul>
+      <h3>Minimum Hours</h3>
+      <p>Set a minimum booking duration that covers your setup and cleanup time. Most hosts set 3–5 hours for day events and 4–6 hours for evening events.</p>
+      <h3>Pre-Event Checklist</h3>
+      <ul>
+        <li>Take time-stamped photos of the entire venue before guests arrive.</li>
+        <li>Lock away personal valuables and irreplaceable items.</li>
+        <li>Confirm working utilities: lights, fans/AC, washrooms, and outdoor areas.</li>
+        <li>Verify all safety restrictions are displayed and accessible (exits, pool rules, noise curfew).</li>
+      </ul>
+      <h3>Post-Event Checklist</h3>
+      <ul>
+        <li>Inspect the venue as soon as guests leave.</li>
+        <li>Take photos of any damage, excessive mess, or missing items immediately.</li>
+        <li>File a damage claim within 48 hours if required (see Damage Claims policy).</li>
+      </ul>
+      <h3>Listing Requirements</h3>
+      <ul>
+        <li>Declare maximum guest capacity accurately — bookings exceeding capacity may be cancelled.</li>
+        <li>Disclose alcohol rules, smoking rules, and any pool, rooftop, or outdoor restrictions.</li>
+        <li>State the noise curfew time applicable to your property or locality.</li>
+        <li>Confirm accessible exits, working washrooms, and adequate lighting.</li>
+      </ul>
+    `
+  },
+
+  'host-protection': {
+    title: 'Host Protection',
+    body: `
+      <div class="policy-note">PartyHouse may hold or facilitate a refundable security deposit for eligible bookings to protect hosts against guest-caused damage.</div>
+      <h3>Security Deposit Coverage</h3>
+      <p>Where a host submits timely and credible evidence of guest-caused damage, extraordinary cleaning, or material rule violations, PartyHouse may deduct all or part of the deposit in line with the Damage Claims process.</p>
+      <h3>What Is Covered</h3>
+      <ul>
+        <li>Property damage caused by guests or their vendors.</li>
+        <li>Extraordinary post-event cleaning costs.</li>
+        <li>Missing or broken items documented before and after the event.</li>
+        <li>Rule violations with documented evidence.</li>
+      </ul>
+      <h3>What Is Not Covered</h3>
+      <ul>
+        <li>Normal wear and tear.</li>
+        <li>Pre-existing damage that was not disclosed in the listing.</li>
+        <li>Claims without supporting evidence (photos, invoices, repair estimates).</li>
+        <li>Claims filed more than 48 hours after the event ends.</li>
+      </ul>
+      <h3>How to File a Claim</h3>
+      <ul>
+        <li>Use the Contact form and select <em>Grievance</em> as the subject.</li>
+        <li>Include your booking reference, event date, and all supporting evidence.</li>
+        <li>Submit within 48 hours of event end.</li>
+      </ul>
+      <h3>Host Responsibilities</h3>
+      <p>Hosts must ensure listings accurately represent the venue. Misrepresentation of condition, capacity, or permitted activities may affect a host's ability to file claims or list on PartyHouse.</p>
+    `
+  },
+
+  'privacy': {
+    title: 'Privacy Policy',
+    body: `
+      <div class="policy-note">Last updated: June 2026. PartyHouse collects only the information reasonably required to manage bookings, support, safety, and operations.</div>
+      <h3>What We Collect</h3>
+      <ul>
+        <li><strong>Account data</strong> — name, email address, phone number, and profile photo when you register.</li>
+        <li><strong>Booking data</strong> — dates, venue, guest count, payment-related metadata, and booking history.</li>
+        <li><strong>Messages</strong> — communications between guests and hosts through the PartyHouse inbox.</li>
+        <li><strong>Usage data</strong> — pages visited, searches performed, and features used, for product improvement.</li>
+        <li><strong>Device data</strong> — browser type and approximate location (city level) for fraud prevention.</li>
+      </ul>
+      <h3>Why We Collect It</h3>
+      <ul>
+        <li>Account creation and authentication.</li>
+        <li>Booking fulfillment and confirmation.</li>
+        <li>Customer support and dispute resolution.</li>
+        <li>Safety review and fraud prevention.</li>
+        <li>Legal and regulatory compliance.</li>
+      </ul>
+      <h3>When We Share It</h3>
+      <ul>
+        <li><strong>Hosts</strong> — receive guest name and contact details for confirmed bookings only.</li>
+        <li><strong>Guests</strong> — receive host name and venue address for confirmed bookings only.</li>
+        <li><strong>Service providers</strong> — payment processors, email delivery, and analytics tools under confidentiality agreements.</li>
+        <li><strong>Legal authorities</strong> — only where required by Indian law or valid legal process.</li>
+      </ul>
+      <h3>Marketing</h3>
+      <p>Promotional communications are opt-in only and separate from core service communications. You may unsubscribe at any time.</p>
+      <h3>Retention</h3>
+      <p>Personal data is retained only as long as needed for active accounts, legal obligations, or unresolved disputes. You may request deletion of your account and associated data by contacting us.</p>
+      <h3>Contact</h3>
+      <p>For privacy questions or data deletion requests, use the Contact form on this site.</p>
+    `
+  },
+
+  'terms': {
+    title: 'Terms of Use',
+    body: `
+      <div class="policy-note">By using PartyHouse, you agree to these terms. PartyHouse is governed by Indian law and disputes are subject to Indian jurisdiction.</div>
+      <h3>Platform Role</h3>
+      <p>PartyHouse is a marketplace and technology platform that connects guests with venue owners. PartyHouse does not own, operate, insure, or physically manage any listed venue. We are not the organiser of any event booked through this platform.</p>
+      <h3>Host Responsibilities</h3>
+      <ul>
+        <li>Listings must be accurate and must not misrepresent venue condition, amenities, capacity, or event permissions.</li>
+        <li>Hosts are responsible for lawful use of their premises, required local permits, and venue safety disclosures.</li>
+        <li>Hosts must honour confirmed bookings. Cancellation by a host triggers a full guest refund.</li>
+      </ul>
+      <h3>Guest Responsibilities</h3>
+      <ul>
+        <li>Guests are responsible for all invitees, vendors, and activities conducted under the booking.</li>
+        <li>Guests must comply with the approved headcount, house rules, noise restrictions, and all applicable laws.</li>
+        <li>Guests may not sublet or transfer a booking without host and platform consent.</li>
+      </ul>
+      <h3>Platform Rights</h3>
+      <ul>
+        <li>PartyHouse may suspend, cancel, or refuse bookings for fraud, safety concerns, legal risk, or serious code-of-conduct violations.</li>
+        <li>PartyHouse may remove listings that violate platform standards or contain false information.</li>
+        <li>PartyHouse reserves the right to update these terms with reasonable notice.</li>
+      </ul>
+      <h3>Disputes</h3>
+      <p>Disputes between guests and hosts should first be raised through the PartyHouse support process. Unresolved disputes are subject to Indian jurisdiction. PartyHouse may mediate but is not obligated to act as arbitrator.</p>
+      <h3>Liability</h3>
+      <p>PartyHouse's liability is limited to the booking fees processed through the platform. We are not liable for property damage, personal injury, or third-party losses arising from events booked through the platform.</p>
+    `
+  }
+
+};
+
+function openPolicy(key) {
+  const policy = POLICIES[key];
+  if (!policy) return;
+  document.getElementById('policyTitle').textContent = policy.title;
+  document.getElementById('policyBody').innerHTML = policy.body;
+  document.getElementById('policyModal').style.display = 'flex';
+  document.getElementById('policyBody').scrollTop = 0;
+}
+
+function closePolicy(e) {
+  if (e && e.target !== document.getElementById('policyModal')) return;
+  document.getElementById('policyModal').style.display = 'none';
+}
