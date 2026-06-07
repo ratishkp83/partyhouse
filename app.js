@@ -756,8 +756,9 @@ async function saveEditListing() {
 
   // Preserve original host_notes but update the rules line
   const existingNotes = v.host_notes || '';
-  const updatedNotes  = existingNotes.replace(/Rules:.*/, rulesLine) +
-    (needsReview ? `\n\n✏️ EDITED by host on ${new Date().toLocaleDateString('en-IN')} — sent for re-review` : '');
+  const updatedNotes  = (existingNotes.replace(/Rules:.*/, rulesLine) +
+    (needsReview ? `\n\n✏️ EDITED by host on ${new Date().toLocaleDateString('en-IN')} — sent for re-review` : ''))
+    .slice(0, 2000);  // M8: cap host_notes to prevent unbounded growth
 
   const updates = {
     name,
@@ -1071,7 +1072,7 @@ async function submitListingForReview() {
       `Noise cutoff: ${document.getElementById('wizCutoff')?.value || 'none'}`,
       `Parking: ${document.getElementById('wizParking')?.value || 'not specified'} spots`,
       `GST: ${document.getElementById('wizGST')?.value?.trim() || 'not provided'}`,
-      document.getElementById('wizHostNotes')?.value?.trim() || '',
+      (document.getElementById('wizHostNotes')?.value?.trim() || '').slice(0, 500),
     ].filter(Boolean).join('\n'),
   };
   // Strip keys that don't exist as DB columns to avoid Supabase insert errors

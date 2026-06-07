@@ -557,3 +557,10 @@ drop trigger if exists prevent_double_booking on bookings;
 create trigger prevent_double_booking
   before insert or update on bookings
   for each row execute procedure check_booking_conflict();
+
+-- ─────────────────────────────────────────────────────────────
+-- M8 Fix: cap host_notes length at DB level
+-- Run in Supabase SQL Editor
+-- ─────────────────────────────────────────────────────────────
+alter table venues
+  add constraint venues_host_notes_length check (length(host_notes) <= 2000);
