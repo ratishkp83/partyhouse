@@ -61,10 +61,10 @@ a{text-decoration:none;color:inherit}
 
 /* search bar */
 .search-bar{
-  flex:1;max-width:580px;margin:0 auto;
+  flex:1;max-width:480px;margin:0 auto;
   background:var(--surface);border:1.5px solid var(--border);
   border-radius:var(--r-pill);display:flex;align-items:stretch;
-  transition:border-color .2s,box-shadow .2s;
+  transition:border-color .2s,box-shadow .2s;min-width:0;
 }
 .search-bar:hover{border-color:#bbb;box-shadow:var(--sh-sm)}
 .search-seg{

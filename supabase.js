@@ -182,22 +182,35 @@ const Auth = {
 // ── Venues API ────────────────────────────────────────────────────────────────
 const Venues = {
 
-  async getAll({ city, occasion, minCapacity, maxPrice, type } = {}) {
+  async getAll({ city, occasion, occasions, minCapacity, maxPrice, type, sort } = {}) {
     let query = db
       .from('venues')
-      .select(`*, host:profiles(full_name)`)
-      .eq('is_active', true)
-      .order('rating_avg', { ascending: false });
+      .select(\`*, host:profiles(full_name)\`)
+      .eq('is_active', true);
 
-    if (city)        query = query.ilike('city', `%${city}%`);
+    if (city)        query = query.ilike('city', \`%\${city}%\`);
     if (occasion)    query = query.contains('occasions', [occasion]);
+    if (occasions?.length === 1) query = query.contains('occasions', [occasions[0]]);
     if (minCapacity) query = query.gte('capacity', minCapacity);
     if (maxPrice)    query = query.lte('price_per_hour', maxPrice);
     if (type)        query = query.eq('venue_type', type);
 
+    // BUG-04: honour sort selection
+    if (sort === 'Price: Low to High')  query = query.order('price_per_hour', { ascending: true });
+    else if (sort === 'Price: High to Low') query = query.order('price_per_hour', { ascending: false });
+    else query = query.order('rating_avg', { ascending: false });
+
     const { data, error } = await query.limit(24);
     if (error) { console.error(error); return []; }
-    return data || [];
+
+    // BUG-03: OR-filter for multiple occasions (Supabase lacks server-side OR-contains)
+    let results = data || [];
+    if (occasions?.length > 1) {
+      results = results.filter(v =>
+        v.occasions?.some(o => occasions.some(f => o.toLowerCase().includes(f.toLowerCase())))
+      );
+    }
+    return results;
   },
 
   async getById(id) {
@@ -673,6 +686,17 @@ async function loadVenuePage(venueId) {
 
   // Init availability calendar
   initCalendar(venueId);
+
+  // BUG-R2-08: enforce min_hours in duration dropdown — remove options below minimum
+  const bwHoursEl = document.getElementById('bwHours');
+  if (bwHoursEl && venue.min_hours) {
+    Array.from(bwHoursEl.options).forEach(opt => {
+      const val = parseInt(opt.value);
+      opt.disabled = val < venue.min_hours;
+      opt.style.display = val < venue.min_hours ? 'none' : '';
+    });
+    if (parseInt(bwHoursEl.value) < venue.min_hours) bwHoursEl.value = String(venue.min_hours);
+  }
 
   // Populate listing page
   document.getElementById('listingTitle').textContent   = venue.name;

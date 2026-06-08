@@ -40,6 +40,20 @@ function initCityAutocomplete() {
       dl.appendChild(opt);
     });
   });
+
+  // BUG-R2-02: Set min=today on all date inputs so browser blocks past-date selection
+  const todayStr = new Date().toISOString().split('T')[0];
+  ['heroDate','navDate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.min = todayStr;
+  });
+
+  // BUG-03/04: wire filter panel checkboxes and sort dropdown to applyFilters
+  document.querySelectorAll('.filter-check input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', applyFilters);
+  });
+  const sortEl = document.querySelector('.sort-select');
+  if (sortEl) sortEl.addEventListener('change', applyFilters);
 }
 document.addEventListener('DOMContentLoaded', initCityAutocomplete);
 
@@ -49,8 +63,30 @@ window.addEventListener('popstate', e => {
     searchFilters = e.state.filters;
     goPage('search');
     loadSearch(e.state.filters);
+  } else if (location.hash === '' || location.hash === '#') {
+    goPage('home');
   }
 });
+
+// BUG-R2-06: deep-link hash routing — handle #venue/:id and #search?... on page load
+(function handleInitialHash() {
+  const hash = location.hash;
+  if (hash.startsWith('#venue/')) {
+    const venueId = hash.replace('#venue/', '').split('?')[0].trim();
+    if (venueId) {
+      // Wait for Supabase auth to settle then open venue
+      setTimeout(() => { if (typeof openVenue === 'function') openVenue(venueId); }, 300);
+    }
+  } else if (hash.startsWith('#search')) {
+    const params = new URLSearchParams(hash.replace('#search?', '').replace('#search', ''));
+    const filters = {};
+    if (params.get('city'))     filters.city     = params.get('city');
+    if (params.get('occasion')) filters.occasion = params.get('occasion');
+    if (params.get('maxPrice')) filters.maxPrice = parseInt(params.get('maxPrice'));
+    if (params.get('cap'))      filters.minCapacity = parseInt(params.get('cap'));
+    setTimeout(() => { goPage('search'); loadSearch(filters); }, 300);
+  }
+})();
 
 // Hero search button — syncs values to nav bar then searches
 function heroSearch() {
@@ -58,6 +94,16 @@ function heroSearch() {
   const date    = document.getElementById('heroDate')?.value || '';
   const occ     = document.getElementById('heroOccasion')?.value || '';
   const guests  = parseInt(document.getElementById('heroGuests')?.value) || undefined;
+
+  // BUG-R2-02: reject past dates
+  if (date) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (new Date(date + 'T00:00:00') < today) {
+      showToast('Please select a future date 📅', 'warn');
+      return;
+    }
+  }
+
   // Mirror to nav bar so filters stay in sync
   if (city)   { const nw = document.getElementById('navWhere');   if (nw) nw.value = city; }
   if (date)   { const nd = document.getElementById('navDate');    if (nd) nd.value = date; }
@@ -68,10 +114,15 @@ function heroSearch() {
 }
 
 function heroSearchByOccasion(occasion) {
+  // Sync cat bar active state
+  document.querySelectorAll('.cat-item').forEach(c => {
+    const txt = c.textContent.trim().toLowerCase();
+    c.classList.toggle('active', txt.includes(occasion.toLowerCase()));
+  });
   const no = document.getElementById('navPartyType');
   if (no) no.value = occasion;
   goPage('search');
-  loadSearch({ occasion });
+  loadSearch({ occasion }, true);
 }
 
 // ── Confetti ──────────────────────────────────────────────────
@@ -172,8 +223,17 @@ async function loadSearch(filters = {}, updateHash = false) {
 function setCat(el, icon, name) {
   document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
+
+  // BUG-R2-04: sync filter panel occasion checkboxes
+  document.querySelectorAll('.filter-check input[type=checkbox]').forEach(cb => {
+    const label = cb.parentElement.textContent.trim().toLowerCase();
+    const cat   = name.toLowerCase().split(' ')[0]; // "Birthday" from "Birthday Bash"
+    cb.checked = label.includes(cat);
+  });
+
   goPage('search');
-  loadSearch({ occasion: name });
+  // BUG-R2-05: update URL so category is shareable/bookmarkable
+  loadSearch({ occasion: name }, true);
 }
 
 function updatePrice(v) {
@@ -189,11 +249,29 @@ function applyFilters() {
   const city    = document.getElementById('navWhere')?.value?.trim() || '';
   const price   = document.getElementById('priceSlider')?.value;
   const guests  = parseInt(document.getElementById('navGuests')?.value) || undefined;
+
+  // BUG-03: collect checked occasion checkboxes from filter panel
+  const checkedOccasions = Array.from(
+    document.querySelectorAll('.filter-check input[type=checkbox]:checked')
+  ).map(cb => cb.parentElement.textContent.trim()
+    .replace('Couple (2\u20134 Guests)', 'Couple')
+    .replace('Family Party', 'Family')
+    .replace('Group Event', 'Group Party')
+    .replace('Birthday Bash', 'Birthday')
+    .split(' ')[0]
+  );
+
+  // BUG-04: read sort selection
+  const sortEl = document.querySelector('.sort-select');
+  const sort   = sortEl?.value || 'Best Match';
+
   goPage('search');
   loadSearch({
-    city:         city || undefined,
-    maxPrice:     price ? parseInt(price) : undefined,
-    minCapacity:  guests,
+    city:          city || undefined,
+    maxPrice:      price ? parseInt(price) : undefined,
+    minCapacity:   guests,
+    occasions:     checkedOccasions.length ? checkedOccasions : undefined,
+    sort,
   });
 }
 
@@ -639,6 +717,12 @@ async function loadWishlist() {
 // ── Host Dashboard ────────────────────────────────────────────
 async function loadDashboard() {
   if (!currentUser) { goPage('auth'); return; }
+
+  // BUG-R2-09: populate host name from real profile
+  const nameEl = document.getElementById('dashHostName');
+  if (nameEl && currentProfile?.full_name) {
+    nameEl.textContent = currentProfile.full_name.split(' ')[0]; // first name only
+  }
 
   const [hostVenues, bookings] = await Promise.all([
     Venues.getHostVenues(),

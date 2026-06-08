@@ -71,7 +71,7 @@
 
     <div class="nav-right">
       <div class="nav-link" onclick="goPage('new-listing')" data-tip="List your venue for parties">List Your Venue</div>
-      <div class="nav-icon" data-tip="Change language or currency">🌐</div>
+      
       <!-- Shown when logged out -->
       <div id="navAuthButtons" style="display:flex;align-items:center;gap:8px">
         <button class="nav-login-btn" onclick="goPage('auth')" data-tip="Sign in to your account">Log in</button>
@@ -104,18 +104,18 @@
 <!-- CATEGORY BAR -->
 <div class="cat-bar" id="catBar">
   <div class="cat-inner">
-    <div class="cat-item active" onclick="setCat(this,'💑','Couple')" data-tip="Intimate venues for couples"><div class="cat-icon" aria-hidden="true">💑</div>Couple</div>
-    <div class="cat-item" onclick="setCat(this,'👨‍👩‍👧‍👦','Family')" data-tip="Family-friendly party venues"><div class="cat-icon" aria-hidden="true">👨‍👩‍👧‍👦</div>Family</div>
-    <div class="cat-item" onclick="setCat(this,'🎉','Group Party')" data-tip="Large group event spaces"><div class="cat-icon" aria-hidden="true">🎉</div>Group Party</div>
-    <div class="cat-item" onclick="setCat(this,'🎂','Birthday')" data-tip="Birthday party venues"><div class="cat-icon" aria-hidden="true">🎂</div>Birthday</div>
-    <div class="cat-item" onclick="setCat(this,'💍','Anniversary')" data-tip="Romantic anniversary venues"><div class="cat-icon">💍</div>Anniversary</div>
-    <div class="cat-item" onclick="setCat(this,'🏊','Pool Party')" data-tip="Venues with private pool"><div class="cat-icon" aria-hidden="true">🏊</div>Pool Party</div>
-    <div class="cat-item" onclick="setCat(this,'🌃','Rooftop')" data-tip="Rooftop party venues"><div class="cat-icon" aria-hidden="true">🌃</div>Rooftop</div>
-    <div class="cat-item" onclick="setCat(this,'🌳','Garden Party')" data-tip="Outdoor garden event spaces"><div class="cat-icon" aria-hidden="true">🌳</div>Garden</div>
-    <div class="cat-item" onclick="setCat(this,'🎮','Game Night')" data-tip="Venues perfect for game nights"><div class="cat-icon">🎮</div>Game Night</div>
-    <div class="cat-item" onclick="setCat(this,'🍾','Club Style')" data-tip="Club-style private party venues"><div class="cat-icon">🍾</div>Club Style</div>
-    <div class="cat-item" onclick="setCat(this,'🏡','Villa')" data-tip="Luxury villas for private parties"><div class="cat-icon" aria-hidden="true">🏡</div>Villa</div>
-    <div class="cat-item" onclick="setCat(this,'🎪','Corporate')" data-tip="Corporate event venues"><div class="cat-icon" aria-hidden="true">🎪</div>Corporate</div>
+    <button class="cat-item active" onclick="setCat(this,'💑','Couple')" data-tip="Intimate venues for couples" aria-label="Filter by Couple"><div class="cat-icon" aria-hidden="true">💑</div>Couple</button>
+    <button class="cat-item" onclick="setCat(this,'👨‍👩‍👧‍👦','Family')" data-tip="Family-friendly party venues" aria-label="Filter by Family"><div class="cat-icon" aria-hidden="true">👨‍👩‍👧‍👦</div>Family</button>
+    <button class="cat-item" onclick="setCat(this,'🎉','Group Party')" data-tip="Large group event spaces" aria-label="Filter by Group Party"><div class="cat-icon" aria-hidden="true">🎉</div>Group Party</button>
+    <button class="cat-item" onclick="setCat(this,'🎂','Birthday')" data-tip="Birthday party venues" aria-label="Filter by Birthday"><div class="cat-icon" aria-hidden="true">🎂</div>Birthday</button>
+    <button class="cat-item" onclick="setCat(this,'💍','Anniversary')" data-tip="Romantic anniversary venues" aria-label="Filter by Anniversary"><div class="cat-icon">💍</div>Anniversary</button>
+    <button class="cat-item" onclick="setCat(this,'🏊','Pool Party')" data-tip="Venues with private pool" aria-label="Filter by Pool Party"><div class="cat-icon" aria-hidden="true">🏊</div>Pool Party</button>
+    <button class="cat-item" onclick="setCat(this,'🌃','Rooftop')" data-tip="Rooftop party venues" aria-label="Filter by Rooftop"><div class="cat-icon" aria-hidden="true">🌃</div>Rooftop</button>
+    <button class="cat-item" onclick="setCat(this,'🌳','Garden Party')" data-tip="Outdoor garden event spaces" aria-label="Filter by Garden"><div class="cat-icon" aria-hidden="true">🌳</div>Garden</button>
+    <button class="cat-item" onclick="setCat(this,'🎮','Game Night')" data-tip="Venues perfect for game nights" aria-label="Filter by Game Night"><div class="cat-icon">🎮</div>Game Night</button>
+    <button class="cat-item" onclick="setCat(this,'🍾','Club Style')" data-tip="Club-style private party venues" aria-label="Filter by Club Style"><div class="cat-icon">🍾</div>Club Style</button>
+    <button class="cat-item" onclick="setCat(this,'🏡','Villa')" data-tip="Luxury villas for private parties" aria-label="Filter by Villa"><div class="cat-icon" aria-hidden="true">🏡</div>Villa</button>
+    <button class="cat-item" onclick="setCat(this,'🎪','Corporate')" data-tip="Corporate event venues" aria-label="Filter by Corporate"><div class="cat-icon" aria-hidden="true">🎪</div>Corporate</button>
   </div>
 </div>
 
@@ -666,7 +666,7 @@
   <div class="page" id="page-dashboard">
     <div class="container">
       <div class="dash-header">
-        <h1>Welcome back, Rahul 🎉</h1>
+        <h1>Welcome back, <span id="dashHostName">there</span> 🎉</h1>
         <p>Your venue dashboard — manage bookings, pricing, and availability</p>
       </div>
       <div class="metrics-grid">
