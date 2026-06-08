@@ -754,4 +754,14 @@ const Notify = {
   venueRevoked(venueId) {
     return this._call({ type: 'venue_revoked', venueId });
   },
+
+  // PH-016: guest confirmation email + host notification on new booking
+  bookingConfirmed(bookingId) {
+    return this._call({ type: 'booking_confirmed', bookingId });
+  },
+
+  // PH-012: notify guests with active bookings when venue goes under re-review
+  venueUnderReview(venueId) {
+    return this._call({ type: 'venue_under_review', venueId });
+  },
 };

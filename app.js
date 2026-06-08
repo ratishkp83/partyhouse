@@ -556,6 +556,8 @@ async function confirmPayment() {
       if (codeEl) codeEl.textContent = createdBooking.confirmation_code;
       nextStep(3);
       showToast('Booking confirmed! 🎉', 'success');
+      // PH-016: send confirmation email to guest and notification to host (non-fatal)
+      Notify.bookingConfirmed(createdBooking.id);
     } else {
       if (btn) { btn.disabled = false; btn.textContent = 'Confirm & Pay'; }
     }
@@ -872,6 +874,8 @@ async function saveEditListing() {
       loadDashboard();
       if (needsReview) {
         showToast('Listing updated and sent for re-review 📋', 'info');
+        // PH-012: notify guests with pending/confirmed bookings that venue is under re-review
+        Notify.venueUnderReview(editingVenueId);
       } else {
         showToast('Listing updated ✅', 'success');
       }

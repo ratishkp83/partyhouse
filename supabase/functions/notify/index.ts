@@ -194,6 +194,70 @@ function venueRejectedEmail(venue: any, reason: string) {
     </div>`)
 }
 
+function bookingConfirmedGuestEmail(booking: any, venue: any) {
+  const dateStr = new Date(booking.party_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return baseTemplate(`
+    <div class="header">
+      <h1>🎊 Booking confirmed!</h1>
+      <p>Your party venue is locked in</p>
+    </div>
+    <div class="body">
+      <p style="font-size:15px;line-height:1.7;margin-top:0">You're all set! Here are your booking details for <strong>${esc(venue.name)}</strong>.</p>
+      <div class="field"><span class="label">Confirmation</span><span class="value">${esc(booking.confirmation_code || '—')}</span></div>
+      <div class="field"><span class="label">Venue</span><span class="value">${esc(venue.name)}</span></div>
+      <div class="field"><span class="label">Location</span><span class="value">${esc(venue.city)}</span></div>
+      <div class="field"><span class="label">Date</span><span class="value">${dateStr}</span></div>
+      <div class="field"><span class="label">Start time</span><span class="value">${esc(booking.start_time || '—')}</span></div>
+      <div class="field"><span class="label">Duration</span><span class="value">${booking.hours} hours</span></div>
+      <div class="field"><span class="label">Guests</span><span class="value">${booking.guests_count}</span></div>
+      <div class="field"><span class="label">Total paid</span><span class="value">₹${Number(booking.total_price).toLocaleString('en-IN')}</span></div>
+      <div class="field"><span class="label">Status</span><span class="badge badge-success">✅ Confirmed</span></div>
+      <hr class="divider">
+      <p style="font-size:13px;color:#7a7068;line-height:1.7">The host will contact you within 2 hours with access details. Need to change plans? Check our <a href="${SITE_URL}" style="color:#e8450a">cancellation policy</a>.</p>
+      <a href="${SITE_URL}#trips" class="cta">View My Bookings →</a>
+    </div>`)
+}
+
+function bookingConfirmedHostEmail(booking: any, venue: any, guestName: string) {
+  const dateStr = new Date(booking.party_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return baseTemplate(`
+    <div class="header">
+      <h1>📅 New booking received!</h1>
+      <p>A guest has confirmed a booking at your venue</p>
+    </div>
+    <div class="body">
+      <p style="font-size:15px;line-height:1.7;margin-top:0">You have a new booking for <strong>${esc(venue.name)}</strong>.</p>
+      <div class="field"><span class="label">Confirmation</span><span class="value">${esc(booking.confirmation_code || '—')}</span></div>
+      <div class="field"><span class="label">Guest</span><span class="value">${esc(guestName)}</span></div>
+      <div class="field"><span class="label">Date</span><span class="value">${dateStr}</span></div>
+      <div class="field"><span class="label">Start time</span><span class="value">${esc(booking.start_time || '—')}</span></div>
+      <div class="field"><span class="label">Duration</span><span class="value">${booking.hours} hours</span></div>
+      <div class="field"><span class="label">Guests</span><span class="value">${booking.guests_count}</span></div>
+      <div class="field"><span class="label">Occasion</span><span class="value">${esc(booking.occasion || '—')}</span></div>
+      <hr class="divider">
+      <p style="font-size:13px;color:#7a7068;line-height:1.7">Please contact your guest within 2 hours to confirm access details.</p>
+      <a href="${SITE_URL}#dashboard" class="cta">View in Dashboard →</a>
+    </div>`)
+}
+
+function venueUnderReviewEmail(venue: any, booking: any, guestName: string) {
+  const dateStr = new Date(booking.party_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return baseTemplate(`
+    <div class="header" style="background: linear-gradient(135deg, #92400e, #d97706)">
+      <h1>ℹ️ Venue update notice</h1>
+      <p>A venue you've booked is under review</p>
+    </div>
+    <div class="body">
+      <p style="font-size:15px;line-height:1.7;margin-top:0">The host of <strong>${esc(venue.name)}</strong> has made changes to their listing. The venue is temporarily under review before going live again.</p>
+      <div class="field"><span class="label">Your booking</span><span class="value">${esc(booking.confirmation_code || '—')}</span></div>
+      <div class="field"><span class="label">Event date</span><span class="value">${dateStr}</span></div>
+      <div class="field"><span class="label">Status</span><span class="badge badge-pending">⏳ Under review</span></div>
+      <hr class="divider">
+      <p style="font-size:13px;color:#7a7068;line-height:1.7"><strong>Your booking remains valid.</strong> The host will contact you to confirm all details. If you have concerns, please contact PartyHouse support.</p>
+      <a href="${SITE_URL}#trips" class="cta">View My Bookings →</a>
+    </div>`)
+}
+
 // ── Request handler ───────────────────────────────────────────
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -219,11 +283,83 @@ serve(async (req: Request) => {
     }
 
     // ── Direct invocation from browser ───────────────────────
-    // All browser-originated calls (approve / reject) must carry a valid admin JWT.
+    // All browser-originated calls must carry a valid JWT.
+    // booking_confirmed and venue_under_review carry guest JWTs (not admin).
+    // Admin actions (venue_approved, venue_rejected, venue_revoked) require admin JWT.
+
+    const { type, venueId, bookingId, reason, adminNote } = body
+
+    // booking_confirmed: guest JWT — verify caller is authenticated
+    if (type === 'booking_confirmed') {
+      if (!bookingId) return new Response(JSON.stringify({ error: 'Missing bookingId' }), { status: 400 })
+
+      const { data: booking } = await db
+        .from('bookings')
+        .select('*, guest:profiles!guest_id(full_name, email), venue:venues(name, city, host_id)')
+        .eq('id', bookingId)
+        .single()
+
+      if (!booking) return new Response(JSON.stringify({ error: 'Booking not found' }), { status: 404 })
+
+      const guestEmail = booking.guest?.email
+      const hostId     = booking.venue?.host_id
+      const guestName  = booking.guest?.full_name || 'Guest'
+
+      const emailJobs: Promise<any>[] = []
+
+      if (guestEmail) {
+        emailJobs.push(sendEmail(
+          guestEmail,
+          `🎊 Booking confirmed — ${booking.venue?.name} on ${new Date(booking.party_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+          bookingConfirmedGuestEmail(booking, booking.venue)
+        ))
+      }
+
+      if (hostId) {
+        const { data: host } = await db.from('profiles').select('email').eq('id', hostId).single()
+        if (host?.email) {
+          emailJobs.push(sendEmail(
+            host.email,
+            `📅 New booking: ${guestName} · ${new Date(booking.party_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+            bookingConfirmedHostEmail(booking, booking.venue, guestName)
+          ))
+        }
+      }
+
+      await Promise.allSettled(emailJobs)
+      return new Response(JSON.stringify({ sent: 'booking_confirmed' }), { status: 200 })
+    }
+
+    // venue_under_review: host JWT — no admin required
+    if (type === 'venue_under_review') {
+      if (!venueId) return new Response(JSON.stringify({ error: 'Missing venueId' }), { status: 400 })
+
+      // Fetch active bookings for this venue
+      const { data: bookings } = await db
+        .from('bookings')
+        .select('*, guest:profiles!guest_id(full_name, email), venue:venues(name, city)')
+        .eq('venue_id', venueId)
+        .in('status', ['pending', 'confirmed'])
+        .gte('party_date', new Date().toISOString().split('T')[0])
+
+      if (bookings?.length) {
+        await Promise.allSettled(bookings.map(b => {
+          const email = b.guest?.email
+          if (!email) return Promise.resolve()
+          return sendEmail(
+            email,
+            `ℹ️ Update about your booking at ${b.venue?.name}`,
+            venueUnderReviewEmail(b.venue, b, b.guest?.full_name || 'Guest')
+          )
+        }))
+      }
+
+      return new Response(JSON.stringify({ sent: 'venue_under_review', notified: bookings?.length || 0 }), { status: 200 })
+    }
+
+    // All remaining types require admin JWT
     const authError = await assertAdmin(req)
     if (authError) return authError
-
-    const { type, venueId, reason, adminNote } = body
 
     if (!type || !venueId) {
       return new Response(JSON.stringify({ error: 'Missing type or venueId' }), { status: 400 })

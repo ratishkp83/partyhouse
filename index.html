@@ -33,7 +33,7 @@
 <nav class="nav" id="nav">
   <div class="nav-inner">
     <div class="logo" onclick="goPage('home')" data-tip="Go to PartyHouse homepage">
-      <span class="logo-icon">🎉</span>
+      <span class="logo-icon" aria-hidden="true">🎉</span>
       Party<span class="logo-accent">House</span>
     </div>
 
@@ -104,18 +104,18 @@
 <!-- CATEGORY BAR -->
 <div class="cat-bar" id="catBar">
   <div class="cat-inner">
-    <div class="cat-item active" onclick="setCat(this,'💑','Couple')" data-tip="Intimate venues for couples"><div class="cat-icon">💑</div>Couple</div>
-    <div class="cat-item" onclick="setCat(this,'👨‍👩‍👧‍👦','Family')" data-tip="Family-friendly party venues"><div class="cat-icon">👨‍👩‍👧‍👦</div>Family</div>
-    <div class="cat-item" onclick="setCat(this,'🎉','Group Party')" data-tip="Large group event spaces"><div class="cat-icon">🎉</div>Group Party</div>
-    <div class="cat-item" onclick="setCat(this,'🎂','Birthday')" data-tip="Birthday party venues"><div class="cat-icon">🎂</div>Birthday</div>
+    <div class="cat-item active" onclick="setCat(this,'💑','Couple')" data-tip="Intimate venues for couples"><div class="cat-icon" aria-hidden="true">💑</div>Couple</div>
+    <div class="cat-item" onclick="setCat(this,'👨‍👩‍👧‍👦','Family')" data-tip="Family-friendly party venues"><div class="cat-icon" aria-hidden="true">👨‍👩‍👧‍👦</div>Family</div>
+    <div class="cat-item" onclick="setCat(this,'🎉','Group Party')" data-tip="Large group event spaces"><div class="cat-icon" aria-hidden="true">🎉</div>Group Party</div>
+    <div class="cat-item" onclick="setCat(this,'🎂','Birthday')" data-tip="Birthday party venues"><div class="cat-icon" aria-hidden="true">🎂</div>Birthday</div>
     <div class="cat-item" onclick="setCat(this,'💍','Anniversary')" data-tip="Romantic anniversary venues"><div class="cat-icon">💍</div>Anniversary</div>
-    <div class="cat-item" onclick="setCat(this,'🏊','Pool Party')" data-tip="Venues with private pool"><div class="cat-icon">🏊</div>Pool Party</div>
-    <div class="cat-item" onclick="setCat(this,'🌃','Rooftop')" data-tip="Rooftop party venues"><div class="cat-icon">🌃</div>Rooftop</div>
-    <div class="cat-item" onclick="setCat(this,'🌳','Garden Party')" data-tip="Outdoor garden event spaces"><div class="cat-icon">🌳</div>Garden</div>
+    <div class="cat-item" onclick="setCat(this,'🏊','Pool Party')" data-tip="Venues with private pool"><div class="cat-icon" aria-hidden="true">🏊</div>Pool Party</div>
+    <div class="cat-item" onclick="setCat(this,'🌃','Rooftop')" data-tip="Rooftop party venues"><div class="cat-icon" aria-hidden="true">🌃</div>Rooftop</div>
+    <div class="cat-item" onclick="setCat(this,'🌳','Garden Party')" data-tip="Outdoor garden event spaces"><div class="cat-icon" aria-hidden="true">🌳</div>Garden</div>
     <div class="cat-item" onclick="setCat(this,'🎮','Game Night')" data-tip="Venues perfect for game nights"><div class="cat-icon">🎮</div>Game Night</div>
     <div class="cat-item" onclick="setCat(this,'🍾','Club Style')" data-tip="Club-style private party venues"><div class="cat-icon">🍾</div>Club Style</div>
-    <div class="cat-item" onclick="setCat(this,'🏡','Villa')" data-tip="Luxury villas for private parties"><div class="cat-icon">🏡</div>Villa</div>
-    <div class="cat-item" onclick="setCat(this,'🎪','Corporate')" data-tip="Corporate event venues"><div class="cat-icon">🎪</div>Corporate</div>
+    <div class="cat-item" onclick="setCat(this,'🏡','Villa')" data-tip="Luxury villas for private parties"><div class="cat-icon" aria-hidden="true">🏡</div>Villa</div>
+    <div class="cat-item" onclick="setCat(this,'🎪','Corporate')" data-tip="Corporate event venues"><div class="cat-icon" aria-hidden="true">🎪</div>Corporate</div>
   </div>
 </div>
 
@@ -128,7 +128,7 @@
       <div class="hero-bg"></div>
       <div class="confetti" id="confetti"></div>
       <div class="hero-content">
-        <div class="hero-eyebrow">🎉 Book unique party venues</div>
+        <div class="hero-eyebrow"><span aria-hidden="true">🎉</span> Book unique party venues</div>
         <h1>Every celebration<br>deserves a <em>perfect stage</em></h1>
         <p>Find private venues for couples, families & groups — birthdays, anniversaries, and everything worth celebrating</p>
         <div class="hero-search">
@@ -187,19 +187,19 @@
           <div class="section-title" style="margin-bottom:24px">Plan by party type</div>
           <div class="party-type-grid">
             <div class="pt-card" onclick="goPage('search')" data-tip="Browse couple venues">
-              <div class="pt-emoji">💑</div>
+              <div class="pt-emoji" aria-hidden="true">💑</div>
               <h3>Couple</h3>
               <p>Intimate spaces for two — anniversaries, proposals & date nights</p>
               <div class="pt-count">124 venues</div>
             </div>
             <div class="pt-card" onclick="goPage('search')" data-tip="Browse family venues">
-              <div class="pt-emoji">👨‍👩‍👧‍👦</div>
+              <div class="pt-emoji" aria-hidden="true">👨‍👩‍👧‍👦</div>
               <h3>Family</h3>
               <p>Safe, spacious venues perfect for family birthdays & reunions</p>
               <div class="pt-count">218 venues</div>
             </div>
             <div class="pt-card" onclick="goPage('search')" data-tip="Browse group party venues">
-              <div class="pt-emoji">🎉</div>
+              <div class="pt-emoji" aria-hidden="true">🎉</div>
               <h3>Group</h3>
               <p>Large-capacity spaces for epic group celebrations & events</p>
               <div class="pt-count">189 venues</div>
@@ -377,8 +377,8 @@
       <!-- M1: Back to search navigation -->
       <button onclick="goPage('search')" style="display:inline-flex;align-items:center;gap:6px;background:none;border:1.5px solid var(--border);border-radius:var(--r-pill);padding:7px 16px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin-bottom:20px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">← Back to search</button>
       <div class="listing-gallery">
-        <div class="gallery-main">🎉<button class="gallery-btn" data-tip="View all photos">📷 All photos</button></div>
-        <div class="gallery-sub">🌃</div>
+        <div class="gallery-main"><span aria-hidden="true">🎉</span><button class="gallery-btn" data-tip="View all photos">📷 All photos</button></div>
+        <div class="gallery-sub" aria-hidden="true">🌃</div>
         <div class="gallery-sub">🎊</div>
       </div>
 
@@ -589,7 +589,7 @@
         <div class="booking-section">
           <h3>Your party booking</h3>
           <div class="trip-summary">
-            <div class="trip-img">🎉</div>
+            <div class="trip-img" aria-hidden="true">🎉</div>
             <div class="trip-detail">
               <strong id="bookingSummaryVenue">The Skyline Rooftop Party Lounge</strong><br>
               <span id="bookingSummaryCity">Bandra, Mumbai</span><br>
@@ -649,7 +649,7 @@
       <div id="bookStep3" style="display:none">
         <div class="booking-section">
           <div class="confirm-anim">
-            <div class="confirm-icon">🎉</div>
+            <div class="confirm-icon" aria-hidden="true">🎉</div>
             <h2 style="font-family:var(--font-d);font-size:28px;margin-bottom:8px">Party Booked!</h2>
             <p style="color:var(--muted);margin-bottom:16px">The Skyline Rooftop is reserved for your celebration on Dec 20, 2026.</p>
             <div class="confirm-code"><span id="confirmationCode">PH-MUM-2026-7743</span></div>
