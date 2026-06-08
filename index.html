@@ -242,22 +242,8 @@
         <!-- Reviews -->
         <div class="section">
           <div class="section-title" style="margin-bottom:24px">What partygoers say</div>
-          <div class="review-row">
-            <div class="review-card">
-              <div class="stars">★★★★★</div>
-              <div class="review-text">"Booked the rooftop for our anniversary. The fairy lights, the view, the setup — Rahul thought about everything. Magical night!"</div>
-              <div class="reviewer"><div class="reviewer-av" style="background:#e91e63">SK</div><div><div class="reviewer-name">Sneha K.</div><div class="reviewer-date">Mumbai · April 2026</div></div></div>
-            </div>
-            <div class="review-card">
-              <div class="stars">★★★★★</div>
-              <div class="review-text">"Pool villa for my son's 10th birthday. 25 kids, zero stress. The host had a DJ, catering, and décor all arranged. Absolute lifesaver!"</div>
-              <div class="reviewer"><div class="reviewer-av" style="background:#2196f3">RM</div><div><div class="reviewer-name">Rakesh M.</div><div class="reviewer-date">Bangalore · May 2026</div></div></div>
-            </div>
-            <div class="review-card">
-              <div class="stars">★★★★★</div>
-              <div class="review-text">"Office farewell party for 40 people. The garden venue was stunning and the host was incredibly helpful with vendor coordination."</div>
-              <div class="reviewer"><div class="reviewer-av" style="background:#4caf50">PT</div><div><div class="reviewer-name">Priya T.</div><div class="reviewer-date">Goa · March 2026</div></div></div>
-            </div>
+          <div class="review-row" id="homepageReviews">
+            <!-- PH-023: Populated dynamically from real verified reviews — see loadHomepageReviews() in app.js -->
           </div>
         </div>
 
@@ -368,7 +354,7 @@
 
         <div>
           <div class="results-header">
-            <div class="results-count" id="resultsCount">64 party venues found</div>
+            <div class="results-count" id="resultsCount">Search for venues above</div>
             <div style="display:flex;gap:10px;align-items:center">
               <select class="sort-select" data-tip="Sort results">
                 <option>Best Match</option>
@@ -481,7 +467,18 @@
           </div>
           <div style="background:#f0fff4;border:1.5px solid #b2dfdb;border-radius:var(--r-lg);padding:20px">
             <h4 style="font-size:14px;font-weight:600;margin-bottom:8px">🔄 Cancellation Policy</h4>
-            <div style="font-size:13px;color:var(--muted);line-height:1.7">Free cancellation within 48 hours of booking. Cancel before your event date for a 50% refund on the booking fee.</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.9">
+              <strong style="color:var(--text)">14+ days before event</strong> — Full refund<br>
+              <strong style="color:var(--text)">7–13 days before event</strong> — 50% refund<br>
+              <strong style="color:var(--text)">Less than 7 days</strong> — No refund (one reschedule may be requested)<br>
+              <strong style="color:var(--text)">Host cancellation</strong> — Full refund guaranteed<br>
+              <span style="font-size:12px">All refunds go to your original payment method. <a onclick="openPolicy('cancellation')" style="color:var(--accent);cursor:pointer;text-decoration:underline">Full policy →</a></span>
+            </div>
+          </div>
+          <div style="margin-top:16px;text-align:right">
+            <button onclick="reportVenue()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;padding:0">
+              ⚠️ Report this venue
+            </button>
           </div>
         </div>
 
@@ -519,7 +516,7 @@
               </div>
               <div class="bw-date">
                 <label>Start Time</label>
-                <select id="bwStartTime" onchange="calcPrice()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                <select id="bwStartTime" onchange="calcPrice();checkEndTimeWarning()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
                   <option value="10:00">10:00 AM</option>
                   <option value="12:00">12:00 PM</option>
                   <option value="14:00">2:00 PM</option>
@@ -533,13 +530,16 @@
             <div class="bw-dates" style="margin-top:8px">
               <div class="bw-date">
                 <label>Duration</label>
-                <select id="bwHours" onchange="calcPrice()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
+                <select id="bwHours" onchange="calcPrice();checkEndTimeWarning()" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">
                   <option value="4">4 hours</option>
                   <option value="6" selected>6 hours</option>
                   <option value="8">8 hours</option>
                   <option value="12">12 hours</option>
                   <option value="18">Full day (18h)</option>
                 </select>
+            </div>
+            <div id="bwEndTimeWarning" style="display:none;font-size:12px;padding:2px 4px 0;margin-top:-4px"></div>
+            <div class="bw-dates" style="margin-top:8px">
               <div class="bw-date" style="border-left:1px solid var(--border)">
                 <label>Occasion</label>
                 <select id="bwOccasion" style="border:none;outline:none;font-size:13px;background:transparent;width:100%;cursor:pointer">

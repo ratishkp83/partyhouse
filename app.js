@@ -145,6 +145,7 @@ document.addEventListener('click', e => {
 // ── Home ──────────────────────────────────────────────────────
 async function loadHome() {
   await renderVenueGrid('featuredGrid', Venues.getFeatured.bind(Venues));
+  loadHomepageReviews();
 }
 
 // ── Search ────────────────────────────────────────────────────
@@ -263,17 +264,49 @@ function calcPrice() {
 
   const subtotal = rate * hours;
   const fee      = Math.round((subtotal + cleaning) * 0.08);
-  const total    = subtotal + cleaning + fee;
+  const gst      = Math.round(fee * 0.18);   // PH-013: 18% GST on service fee
+  const deposit  = selectedVenueData.security_deposit || 0;
+  const total    = subtotal + cleaning + fee + gst;
 
   const bd = document.getElementById('bwBreakdown');
   if (bd) {
+    const depositRow = deposit
+      ? `<div class="bw-row"><span>Security deposit <span style="font-size:11px;color:var(--success)">(refundable)</span></span><span>₹${deposit.toLocaleString('en-IN')}</span></div>`
+      : '';
     bd.innerHTML = `
       <div class="bw-row"><span>${rateLabel}</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
       <div class="bw-row"><span>Cleaning & setup fee</span><span>₹${cleaning.toLocaleString('en-IN')}</span></div>
       <div class="bw-row"><span>PartyHouse service fee (8%)</span><span>₹${fee.toLocaleString('en-IN')}</span></div>
-      <div class="bw-row total"><span>Total</span><span>₹${total.toLocaleString('en-IN')}</span></div>`;
+      <div class="bw-row"><span>GST on service fee (18%)</span><span>₹${gst.toLocaleString('en-IN')}</span></div>
+      ${depositRow}
+      <div class="bw-row total"><span>Total${deposit ? ' + deposit' : ''}</span><span>₹${(total + deposit).toLocaleString('en-IN')}</span></div>`;
   }
-  return { hours, rate, cleaning, fee, total };
+  return { hours, rate, cleaning, fee, gst, deposit, total };
+}
+
+function checkEndTimeWarning() {
+  // PH-022: Show end time; warn if booking runs past 4:00 AM closing
+  const startVal = document.getElementById('bwStartTime')?.value || '18:00';
+  const hours    = parseInt(document.getElementById('bwHours')?.value) || 4;
+  const sh       = parseInt(startVal.split(':')[0]);
+  const startMins = sh * 60;
+  const endMins   = startMins + hours * 60;
+  const endH = Math.floor(endMins / 60) % 24;
+  const endM = endMins % 60;
+  const endStr = String(endH).padStart(2,'0') + ':' + String(endM).padStart(2,'0');
+
+  const pastMidnight      = endMins >= 24 * 60;
+  const minsAfterMidnight = pastMidnight ? endMins - 24 * 60 : 0;
+  const CLOSING_MINS      = 4 * 60; // 4:00 AM
+
+  const warningEl = document.getElementById('bwEndTimeWarning');
+  if (!warningEl) return;
+  if (pastMidnight && minsAfterMidnight > CLOSING_MINS) {
+    warningEl.innerHTML = '<span style="color:var(--warn)">⚠ Ends ' + endStr + ' — past 4 AM closing time</span>';
+  } else {
+    warningEl.innerHTML = '<span style="color:var(--muted)">Ends at ' + endStr + '</span>';
+  }
+  warningEl.style.display = 'block';
 }
 
 // ── Availability Calendar ─────────────────────────────────────
@@ -463,21 +496,25 @@ function populateBookingSummary() {
   // Price breakdown in step 1 — use calcPrice() result so weekend rate is reflected (C2)
   const pb = document.getElementById('bookingPriceBreakdown');
   if (pb) {
-    // M2: build rateLabel via DOM to avoid mixing raw HTML with dynamic values in innerHTML
     const isWeekend   = price.rate !== v.price_per_hour;
     const rateLabelTxt = `₹${price.rate.toLocaleString('en-IN')} × ${hours} hours`;
     const weekendBadge = isWeekend
       ? ` <span style="font-size:11px;color:var(--accent);font-weight:600">(Weekend rate)</span>`
       : '';
+    const depositRow = price.deposit
+      ? `<div class="pb-row"><span>Security deposit <span style="font-size:11px;color:var(--success)">(refundable)</span></span><span>₹${escHtml(String(price.deposit.toLocaleString('en-IN')))}</span></div>`
+      : '';
     pb.innerHTML = `
       <div class="pb-row"><span>${escHtml(rateLabelTxt)}${weekendBadge}</span><span>₹${escHtml(String((price.rate * Number(hours)).toLocaleString('en-IN')))}</span></div>
       <div class="pb-row"><span>Cleaning &amp; setup fee</span><span>₹${escHtml(String((v.cleaning_fee ?? 0).toLocaleString('en-IN')))}</span></div>
-      <div class="pb-row"><span>PartyHouse service fee</span><span>₹${escHtml(String(price.fee.toLocaleString('en-IN')))}</span></div>
-      <div class="pb-row total"><span>Total (INR)</span><span>₹${escHtml(String(price.total.toLocaleString('en-IN')))}</span></div>`;
+      <div class="pb-row"><span>PartyHouse service fee (8%)</span><span>₹${escHtml(String(price.fee.toLocaleString('en-IN')))}</span></div>
+      <div class="pb-row"><span>GST on service fee (18%)</span><span>₹${escHtml(String(price.gst.toLocaleString('en-IN')))}</span></div>
+      ${depositRow}
+      <div class="pb-row total"><span>Total${price.deposit ? ' + deposit' : ''} (INR)</span><span>₹${escHtml(String((price.total + price.deposit).toLocaleString('en-IN')))}</span></div>`;
   }
 
   const totalEl = document.getElementById('bookingConfirmTotal');
-  if (totalEl) totalEl.textContent = `Confirm & Pay ₹${price.total.toLocaleString('en-IN')}`;
+  if (totalEl) totalEl.textContent = `Confirm & Pay ₹${(price.total + price.deposit).toLocaleString('en-IN')}`;
 }
 
 async function confirmPayment() {
@@ -850,8 +887,29 @@ async function saveEditListing() {
 // ── New Listing Wizard ────────────────────────────────────────
 // ── Listing Wizard ───────────────────────────────────────────
 function startNewListing() {
-  // Reset all wizard state
-  wizStep = 1;
+  // PH-019: offer to restore a saved draft if one exists (< 7 days old)
+  if (hasSavedWizardDraft()) {
+    showConfirm('You have an unsaved venue draft. Continue where you left off?').then(resume => {
+      if (resume) {
+        restoreWizardDraft();
+        // Jump to the saved step
+        for (let i = 1; i <= 9; i++) {
+          const el = document.getElementById('wizStep' + i);
+          if (el) el.style.display = (i === wizStep) ? 'block' : 'none';
+        }
+        document.getElementById('wizBar').style.width = (wizStep / 8 * 100) + '%';
+        document.getElementById('wizCounter').textContent = 'Step ' + wizStep + ' of 8';
+      } else {
+        clearWizardDraft();
+        _resetWizard();
+      }
+    });
+    return;
+  }
+  _resetWizard();
+}
+
+function _resetWizard() {
   wizVals.wg = 30;
   wizVals.wh = 4;
   wizPhotos  = [];
@@ -904,8 +962,7 @@ function startNewListing() {
   if (whEl) whEl.textContent = 4;
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-let wizStep = 1;
+} // end _resetWizard
 const wizVals = { wg: 30, wh: 4 };
 let wizPhotos  = []; // array of File objects
 
@@ -930,6 +987,7 @@ function wizNext(n) {
   document.getElementById('wizBar').style.width = (n / total * 100) + '%';
   document.getElementById('wizCounter').textContent = 'Step ' + n + ' of ' + total;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  saveWizardDraft(); // PH-019: auto-save on every step
 }
 
 function adjWiz(k, d) {
@@ -1145,6 +1203,7 @@ async function submitListingForReview() {
     btn.disabled    = false;
 
     if (venue) {
+      clearWizardDraft(); // PH-019: draft no longer needed
       const refCode = venue.confirmation_code || ('PH-' + (venue.city?.toUpperCase().slice(0,3) || 'PH') + '-' + Date.now().toString(36).toUpperCase().slice(-6));
       document.getElementById('wizStep8').style.display = 'none';
       document.getElementById('wizStep9').style.display = 'block';
@@ -1868,4 +1927,120 @@ function openPolicy(key) {
 function closePolicy(e) {
   if (e && e.target !== document.getElementById('policyModal')) return;
   document.getElementById('policyModal').style.display = 'none';
+}
+
+// ── PH-023: Load real reviews on homepage ────────────────────────────────────
+
+async function loadHomepageReviews() {
+  const container = document.getElementById('homepageReviews');
+  if (!container) return;
+
+  // Fetch 3 most recent top-rated reviews across all venues
+  const { data } = await db
+    .from('reviews')
+    .select(`*, reviewer:profiles(full_name), venue:venues(name, city)`)
+    .gte('rating', 4)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
+  if (!data || !data.length) {
+    container.innerHTML = '<div style="font-size:14px;color:var(--muted);grid-column:1/-1;text-align:center;padding:24px 0">Be the first to book and leave a review!</div>';
+    return;
+  }
+
+  const stars = r => '★'.repeat(r) + '☆'.repeat(5 - r);
+  const initials = name => (name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const colors = ['#e91e63','#2196f3','#4caf50','#ff9800','#9c27b0'];
+
+  container.innerHTML = data.map((r, i) => `
+    <div class="review-card">
+      <div class="stars">${stars(r.rating)}</div>
+      <div class="review-text">"${escHtml(r.comment || '')}"</div>
+      <div class="reviewer">
+        <div class="reviewer-av" style="background:${colors[i % colors.length]}">${initials(r.reviewer?.full_name)}</div>
+        <div>
+          <div class="reviewer-name">${escHtml(r.reviewer?.full_name || 'Guest')}</div>
+          <div class="reviewer-date">${escHtml(r.venue?.city || '')} · ${new Date(r.created_at).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── PH-026: Report this venue ─────────────────────────────────────────────────
+
+function reportVenue() {
+  if (!selectedVenueData) return;
+  const venueName = selectedVenueData.name || 'this venue';
+  // Pre-fill contact modal with subject and venue context
+  document.getElementById('contactSubject').value = 'grievance';
+  document.getElementById('contactMessage').value = `I would like to report a concern about: ${venueName}\n\n`;
+  openContactModal();
+  // Move cursor to end of textarea
+  const ta = document.getElementById('contactMessage');
+  setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 100);
+}
+
+// ── PH-017: Verified review — only for completed bookings ─────────────────────
+
+async function Reviews_createVerified(venueId, rating, comment) {
+  if (!Auth.requireAuth('leave a review')) return;
+
+  // Check caller has a completed booking for this venue
+  const { data: bookings } = await db
+    .from('bookings')
+    .select('id')
+    .eq('guest_id', currentUser.id)
+    .eq('venue_id', venueId)
+    .eq('status', 'completed')
+    .limit(1);
+
+  if (!bookings || !bookings.length) {
+    showToast('Reviews can only be left after a completed booking at this venue.', 'warn');
+    return null;
+  }
+
+  return Reviews.create(bookings[0].id, venueId, rating, comment);
+}
+
+// ── PH-019: Wizard draft save / restore ──────────────────────────────────────
+
+const WIZ_DRAFT_KEY = 'ph_wizard_draft';
+
+function saveWizardDraft() {
+  try {
+    const draft = {
+      step: wizStep,
+      wizData: { ...wizData },
+      wizVals: { ...wizVals },
+      savedAt: Date.now()
+    };
+    localStorage.setItem(WIZ_DRAFT_KEY, JSON.stringify(draft));
+  } catch (e) { /* localStorage unavailable */ }
+}
+
+function clearWizardDraft() {
+  try { localStorage.removeItem(WIZ_DRAFT_KEY); } catch (e) {}
+}
+
+function hasSavedWizardDraft() {
+  try {
+    const raw = localStorage.getItem(WIZ_DRAFT_KEY);
+    if (!raw) return false;
+    const draft = JSON.parse(raw);
+    // Drafts expire after 7 days
+    return draft.savedAt && (Date.now() - draft.savedAt) < 7 * 24 * 60 * 60 * 1000;
+  } catch (e) { return false; }
+}
+
+function restoreWizardDraft() {
+  try {
+    const raw = localStorage.getItem(WIZ_DRAFT_KEY);
+    if (!raw) return false;
+    const draft = JSON.parse(raw);
+    if (!draft.wizData) return false;
+    Object.assign(wizData, draft.wizData);
+    Object.assign(wizVals, draft.wizVals);
+    wizStep = draft.step || 1;
+    return true;
+  } catch (e) { return false; }
 }
